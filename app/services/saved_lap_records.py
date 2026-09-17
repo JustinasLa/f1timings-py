@@ -8,6 +8,7 @@ track, together with the name of the driver who set it.
 import json
 import logging
 import os
+import tempfile
 import threading
 from datetime import datetime
 
@@ -96,14 +97,38 @@ def write_track_records(track_name, lap_times):
     }
 
     file_path = get_track_file_path(track_name)
+
+    # Write to a temp file in the same directory and atomically rename it into
+    # place, so a crash, full disk, or a bad value mid-dump can never leave a
+    # truncated or empty file where a good one used to be.
+    tmp_path = None
     try:
-        json_file = open(file_path, "w", encoding="utf-8")
+        json_text = json.dumps(file_content, indent=2)
+
+        tmp_file = tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=os.path.dirname(file_path) or ".",
+            delete=False,
+        )
+        tmp_path = tmp_file.name
         try:
-            json.dump(file_content, json_file, indent=2)
+            tmp_file.write(json_text)
+            tmp_file.flush()
+            os.fsync(tmp_file.fileno())
         finally:
-            json_file.close()
+            tmp_file.close()
+
+        os.chmod(tmp_path, 0o644)
+
+        os.replace(tmp_path, file_path)
         return True
-    except OSError as error:
+    except (OSError, TypeError, ValueError) as error:
+        if tmp_path and os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
         logger.warning(f"Could not write lap times for '{track_name}': {error}")
         return False
 
