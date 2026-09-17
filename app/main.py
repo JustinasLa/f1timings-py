@@ -55,15 +55,25 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="F1 Telemetry API", version="1.0.0", lifespan=lifespan)
 
 # --- Middleware ---
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for development
-    # In production, restrict this to your frontend's origin:
-    # allow_origins=["http://localhost:8080", "http://127.0.0.1:8080", "http://your_domain.com"],
-    allow_credentials=True,
-    allow_methods=["*"],  # Allow all standard methods
-    allow_headers=["*"],  # Allow all headers
-)
+# CORS is opt-in: set CORS_ORIGINS (comma-separated) to enable cross-origin
+# access. The dashboard is served by this same app, so it is unneeded by default.
+cors_origins = [
+    origin.strip()
+    for origin in os.getenv("CORS_ORIGINS", "").split(",")
+    if origin.strip()
+]
+if cors_origins:
+    allow_credentials = True
+    if "*" in cors_origins:
+        allow_credentials = False
+        logger.warning("Wildcard CORS origin (*) enabled; disabling credentials")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=cors_origins,
+        allow_credentials=allow_credentials,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 
 # -- WebSocket Connection Management ---

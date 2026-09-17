@@ -169,6 +169,10 @@ The F1 timing dashboard underwent major performance optimization to handle real-
 
 The server listens on `0.0.0.0:8080` by default, or `0.0.0.0:8000` if using uvicorn to run the program.
 
+## Configuration
+
+- `CORS_ORIGINS` — comma-separated list of allowed cross-origin request origins (e.g. `http://localhost:5173,http://example.com`). Unset or empty by default, which disables CORS entirely since the dashboard is served by this same app.
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
