@@ -6,6 +6,7 @@ import threading
 import time
 import logging
 import traceback
+import unicodedata
 from typing import Optional, Dict, Any, List
 from dotenv import load_dotenv
 from fastapi import APIRouter, HTTPException, Query
@@ -380,21 +381,28 @@ async def get_driver_aliases():
 @telemetry_router.post("/driver_alias", response_model=Dict[str, str])
 async def set_driver_alias(alias_input: DriverAliasInput):
     """Sets or clears a display name alias for a raw telemetry driver name."""
-    telemetry_name = alias_input.telemetry_name.strip()
-    display_name = alias_input.display_name.strip()
+    # Defence in depth: both names are shown on every operator's dashboard.
+    cleaned_telemetry_name = _clean_driver_name(alias_input.telemetry_name)
+    if cleaned_telemetry_name is None:
+        raise HTTPException(status_code=400, detail="Telemetry name is invalid")
+    telemetry_name = cleaned_telemetry_name
 
     if not telemetry_name:
         raise HTTPException(status_code=400, detail="Telemetry name cannot be empty")
 
-    # Defence in depth: display names are shown on every operator's dashboard.
-    if len(display_name) > 48:
-        raise HTTPException(status_code=400, detail="Display name is too long")
-    if any(c < " " or c == "\x7f" for c in display_name):
-        raise HTTPException(
-            status_code=400, detail="Display name contains control characters"
-        )
+    # Empty display name is allowed: it clears the alias.
+    cleaned_display_name = _clean_driver_name(alias_input.display_name)
+    if cleaned_display_name is None:
+        raise HTTPException(status_code=400, detail="Display name is invalid")
+    display_name = cleaned_display_name
 
     alias_key = _normalize_driver_name(telemetry_name)
+    if (
+        alias_key not in driver_name_aliases
+        and len(driver_name_aliases) >= 256
+    ):
+        raise HTTPException(status_code=400, detail="Too many aliases")
+
     if display_name:
         driver_name_aliases[alias_key] = display_name
     else:
@@ -460,6 +468,18 @@ packets_filtered_count = 0
 
 def _normalize_driver_name(name: str) -> str:
     return name.strip().lower()
+
+
+def _clean_driver_name(name: str, max_len: int = 48) -> Optional[str]:
+    """Strips a driver name and rejects it (returns None) if too long or if it
+    contains control/format characters (C0/C1 controls, DEL, line/paragraph
+    separators, zero-width chars, bidi overrides, etc.)."""
+    cleaned = name.strip()
+    if len(cleaned) > max_len:
+        return None
+    if any(unicodedata.category(c) in ("Cc", "Cf") for c in cleaned):
+        return None
+    return cleaned
 
 
 def get_driver_display_name(telemetry_name: str) -> str:
@@ -900,16 +920,19 @@ def telemetry_listener_worker(host: str, port: int, stop_event: threading.Event)
                                         .split("\x00")[0]
                                         .strip()
                                     )
+                                    cleaned_name_str = _clean_driver_name(name_str)
                                     if (
-                                        not name_str
-                                        or name_str == "???????????????"
-                                        or name_str.lower() == "player"
-                                        or name_str.isspace()
+                                        not cleaned_name_str
+                                        or cleaned_name_str == "???????????????"
+                                        or cleaned_name_str.lower() == "player"
+                                        or cleaned_name_str.isspace()
                                     ):
                                         race_num = getattr(
                                             participant, "race_number", 0
                                         )
                                         name_str = f"Driver {race_num if race_num != 0 else i + 1}"
+                                    else:
+                                        name_str = cleaned_name_str
                                 except Exception as e:
                                     logger.error(
                                         f"Error decoding participant name for index {i}: {e}"

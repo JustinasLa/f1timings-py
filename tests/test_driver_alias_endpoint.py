@@ -59,3 +59,27 @@ def test_normal_display_name_is_accepted():
     resp = _set_alias("car1", "Lewis Hamilton")
     assert resp.status_code == 200
     assert resp.json().get(routes._normalize_driver_name("car1")) == "Lewis Hamilton"
+
+
+def test_telemetry_name_60_chars_is_rejected():
+    resp = _set_alias("A" * 60, "Lewis Hamilton")
+    assert resp.status_code == 400
+
+
+def test_telemetry_name_with_control_character_is_rejected():
+    resp = _set_alias("bad\x01name", "Lewis Hamilton")
+    assert resp.status_code == 400
+
+
+def test_display_name_with_bidi_override_is_rejected():
+    resp = _set_alias("car1", "bad‮name")
+    assert resp.status_code == 400
+
+
+def test_257th_distinct_alias_is_rejected():
+    for i in range(256):
+        resp = _set_alias(f"car{i}", f"Driver {i}")
+        assert resp.status_code == 200
+
+    resp = _set_alias("car256", "Driver 256")
+    assert resp.status_code == 400

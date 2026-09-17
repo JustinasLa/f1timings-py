@@ -275,7 +275,9 @@ function isBetterLap(candidate, current) {
    which simulator the lap came from (for example "nhlstendensim" is blue and
    "nhlstendensim2" is orange, set in TEAM_COLORS). */
 function getDriverDotColor(driver) {
-  return TEAM_COLORS[driver.team] || TEAM_COLORS['DEFAULT'];
+  return Object.prototype.hasOwnProperty.call(TEAM_COLORS, driver.team)
+    ? TEAM_COLORS[driver.team]
+    : TEAM_COLORS['DEFAULT'];
 }
 
 /* Build the leaderboard "drivers" object from saved track_times records.
@@ -401,6 +403,7 @@ function bindLeaderboardClicks(tbody) {
   tbody.addEventListener('click', (event) => {
     const deleteButton = event.target.closest('.lap-delete-btn');
     if (deleteButton) {
+      event.stopPropagation();
       deleteSavedLap(
         deleteButton.dataset.driver,
         deleteButton.dataset.time,
@@ -649,7 +652,7 @@ function buildLapDetailRow(driver, fastestValidTime) {
 
     rowsHtml += `<tr class="lap-detail-row ${stripeClass}">
       <td class="td-pos col-pos">${deleteButtonHtml}</td>
-      <td class="lap-detail-when">${clock}</td>
+      <td class="lap-detail-when">${escapeHtml(clock)}</td>
       <td class="td-laps col-topspeed">${formatTopSpeed(lap.fastest_speed_kph)}</td>
       <td class="col-bestlap">
         <span class="laptime-badge ${badgeClass}">${formatTime(lap.time)}</span>
