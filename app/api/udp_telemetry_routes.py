@@ -386,6 +386,14 @@ async def set_driver_alias(alias_input: DriverAliasInput):
     if not telemetry_name:
         raise HTTPException(status_code=400, detail="Telemetry name cannot be empty")
 
+    # Defence in depth: display names are shown on every operator's dashboard.
+    if len(display_name) > 48:
+        raise HTTPException(status_code=400, detail="Display name is too long")
+    if any(c < " " or c == "\x7f" for c in display_name):
+        raise HTTPException(
+            status_code=400, detail="Display name contains control characters"
+        )
+
     alias_key = _normalize_driver_name(telemetry_name)
     if display_name:
         driver_name_aliases[alias_key] = display_name

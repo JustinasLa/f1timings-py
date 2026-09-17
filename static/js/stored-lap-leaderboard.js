@@ -392,8 +392,32 @@ function buildDriversFromRecords(records) {
   return drivers;
 }
 
+/* Attach the one delegated click handler for the leaderboard body. The table is
+   re-rendered (innerHTML) on every update, so the listener lives on the tbody
+   itself and is bound only once. */
+function bindLeaderboardClicks(tbody) {
+  if (!tbody || tbody.dataset.clicksBound === '1') return;
+  tbody.dataset.clicksBound = '1';
+  tbody.addEventListener('click', (event) => {
+    const deleteButton = event.target.closest('.lap-delete-btn');
+    if (deleteButton) {
+      deleteSavedLap(
+        deleteButton.dataset.driver,
+        deleteButton.dataset.time,
+        deleteButton.dataset.recordedAt
+      );
+      return;
+    }
+    const row = event.target.closest('tr[data-driver]');
+    if (row) {
+      toggleDriverExpand(row.dataset.driver);
+    }
+  });
+}
+
 function updateLeaderboard(drivers) {
   const tbody = document.getElementById("timingTableBody");
+  bindLeaderboardClicks(tbody);
 
   // Remember what we rendered so toggling a row open/closed can re-render
   // immediately without waiting for the next data fetch.
@@ -475,7 +499,7 @@ function updateLeaderboard(drivers) {
 
     const isExpanded = expandedDrivers.has(driver.name);
 
-    rowsHtml += `<tr class="clickable-row ${rowStateClass} ${isExpanded ? 'expanded' : ''}" onclick="toggleDriverExpand('${escapeJs(driver.name)}')">
+    rowsHtml += `<tr class="clickable-row ${rowStateClass} ${isExpanded ? 'expanded' : ''}" data-driver="${escapeAttr(driver.name)}">
       <td class="td-pos col-pos ${posCellClass}">${posText}</td>
       <td>
         <div class="driver-name">
@@ -615,13 +639,13 @@ function buildLapDetailRow(driver, fastestValidTime) {
     }
 
     // Square X button in the position column of each recent lap, to delete that
-    // saved lap. We pass the driver, time and recorded_at so the backend removes
-    // exactly this lap.
+    // saved lap. We carry the driver, time and recorded_at in data attributes so
+    // the delegated click handler can tell the backend exactly which lap to drop.
     const deleteButtonHtml =
       '<button class="lap-delete-btn" type="button" title="Delete this lap"' +
-      ' onclick="event.stopPropagation(); deleteSavedLap(\'' +
-      escapeJs(driver.name) + '\', \'' + escapeJs(lap.time) + '\', \'' +
-      escapeJs(lap.recorded_at || '') + '\')">&times;</button>';
+      ' data-driver="' + escapeAttr(driver.name) + '"' +
+      ' data-time="' + escapeAttr(lap.time) + '"' +
+      ' data-recorded-at="' + escapeAttr(lap.recorded_at || '') + '">&times;</button>';
 
     rowsHtml += `<tr class="lap-detail-row ${stripeClass}">
       <td class="td-pos col-pos">${deleteButtonHtml}</td>

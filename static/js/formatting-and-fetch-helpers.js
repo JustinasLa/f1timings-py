@@ -5,11 +5,7 @@ function escapeHtml(str) {
 }
 
 function escapeAttr(str) {
-  return escapeHtml(str).replace(/"/g, '&quot;');
-}
-
-function escapeJs(str) {
-  return String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  return escapeHtml(str).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 async function fetchJsonWithTimeout(url, timeoutMs, options = {}) {
