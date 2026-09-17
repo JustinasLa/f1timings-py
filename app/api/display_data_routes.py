@@ -145,7 +145,14 @@ async def get_track_records_endpoint(track: str = None):
     if not track_name:
         raise HTTPException(status_code=404, detail="No track name set or specified")
 
-    lap_times = load_track_records(track_name)
+    try:
+        lap_times = load_track_records(track_name)
+    except (OSError, ValueError) as error:
+        # Display-only: show nothing rather than failing the page. The file is
+        # left alone; only the writers in saved_lap_records may touch it.
+        logger.warning(f"Could not read lap times for '{track_name}': {error}")
+        lap_times = []
+
     return {"track": track_name, "lap_times": lap_times}
 
 
@@ -161,12 +168,19 @@ async def delete_track_record_endpoint(delete_input: LapDeleteInput):
     if not track_name:
         raise HTTPException(status_code=404, detail="No track name set or specified")
 
-    removed = delete_lap_record(
-        track_name,
-        delete_input.driver,
-        delete_input.time,
-        delete_input.recorded_at,
-    )
+    try:
+        removed = delete_lap_record(
+            track_name,
+            delete_input.driver,
+            delete_input.time,
+            delete_input.recorded_at,
+        )
+    except (OSError, ValueError) as error:
+        logger.error(f"Could not read lap records for '{track_name}': {error}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Could not read lap records for track '{track_name}'",
+        )
     if not removed:
         raise HTTPException(status_code=404, detail="No matching lap to delete")
 
