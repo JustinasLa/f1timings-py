@@ -162,8 +162,9 @@ def test_save_lap_record_corrupt_file_leaves_file_untouched_and_logs_error(
     original_bytes = file_path.read_bytes()
 
     with caplog.at_level(logging.ERROR, logger=slr.logger.name):
-        slr.save_lap_record(TRACK, "Max", "Red Bull", "1:12.000", True, 300.0)
+        result = slr.save_lap_record(TRACK, "Max", "Red Bull", "1:12.000", True, 300.0)
 
+    assert result is False
     assert file_path.read_bytes() == original_bytes
     assert _other_files(tmp_path, file_path.name) == []
     assert any(
@@ -172,7 +173,7 @@ def test_save_lap_record_corrupt_file_leaves_file_untouched_and_logs_error(
     )
 
 
-def test_delete_lap_record_corrupt_file_returns_false_and_leaves_file_untouched(
+def test_delete_lap_record_corrupt_file_raises_and_leaves_file_untouched(
     tmp_path, monkeypatch
 ):
     monkeypatch.setattr(slr, "TRACK_TIMES_DIR", str(tmp_path))
@@ -180,9 +181,9 @@ def test_delete_lap_record_corrupt_file_returns_false_and_leaves_file_untouched(
     file_path.write_text("{not json", encoding="utf-8")
     original_bytes = file_path.read_bytes()
 
-    result = slr.delete_lap_record(TRACK, "Max", "1:12.000", "2024-01-01T00:00:00")
+    with pytest.raises(ValueError):
+        slr.delete_lap_record(TRACK, "Max", "1:12.000", "2024-01-01T00:00:00")
 
-    assert result is False
     assert file_path.read_bytes() == original_bytes
     assert _other_files(tmp_path, file_path.name) == []
 

@@ -17,12 +17,9 @@ logger = logging.getLogger(__name__)
 # The folder where all the per-track JSON files are kept.
 TRACK_TIMES_DIR = "track_times"
 
-# Guards the read-modify-write of a track's file so the telemetry thread's
-# auto-save and a delete request from the API cannot clobber each other. It is
-# re-entrant because load_track_records takes it too and the writers call that
-# while already holding it. Reads take it so a reader can never hold the file
-# open across a writer's os.replace, which fails with PermissionError on
-# Windows when the target is open.
+# Guards the read-modify-write of a track's file. It is re-entrant because
+# save_lap_record and delete_lap_record call load_track_records while already
+# holding this lock.
 _records_lock = threading.RLock()
 
 
@@ -147,7 +144,12 @@ def save_lap_record(
     sector_2_ms=None,
     sector_3_ms=None,
 ):
-    """Adds one lap time (and who set it) to a track's JSON file."""
+    """Adds one lap time (and who set it) to a track's JSON file.
+
+    Returns True when the record was written, False when it could not be
+    (either the existing file could not be read, so the write was refused to
+    avoid overwriting it, or the write itself failed).
+    """
     # Build the new record describing this lap and who set it. The "team" says
     # which simulator the lap came from, "is_valid" remembers whether the lap
     # was a valid, legal lap, and "fastest_speed_kph" is the top speed reached
@@ -175,13 +177,15 @@ def save_lap_record(
                 f"Not saving lap for '{driver_name}': could not read existing lap "
                 f"times for track '{track_name}', refusing to overwrite them: {error}"
             )
-            return
+            return False
 
         lap_times.append(new_record)
-        if write_track_records(track_name, lap_times):
+        written = write_track_records(track_name, lap_times)
+        if written:
             logger.debug(
                 f"Saved lap time for '{driver_name}' on track '{track_name}'."
             )
+        return written
 
 
 def delete_lap_record(track_name, driver_name, time, recorded_at):
@@ -190,18 +194,12 @@ def delete_lap_record(track_name, driver_name, time, recorded_at):
     A lap is identified by the driver who set it, its time string and its
     recorded_at timestamp. Only the FIRST record matching all three is removed,
     so deleting one lap never accidentally removes a duplicate. Returns True when
-    a record was removed, False when nothing matched or the track's existing
-    records could not be read (in which case the file is left untouched).
+    a record was removed, False when nothing matched. Raises OSError or
+    ValueError (propagated from load_track_records) when the track's existing
+    records could not be read, leaving the file untouched.
     """
     with _records_lock:
-        try:
-            lap_times = load_track_records(track_name)
-        except (OSError, ValueError) as error:
-            logger.error(
-                f"Not deleting lap for '{driver_name}': could not read existing lap "
-                f"times for track '{track_name}', refusing to overwrite them: {error}"
-            )
-            return False
+        lap_times = load_track_records(track_name)
 
         kept_records = []
         removed = False

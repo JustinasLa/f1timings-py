@@ -168,12 +168,19 @@ async def delete_track_record_endpoint(delete_input: LapDeleteInput):
     if not track_name:
         raise HTTPException(status_code=404, detail="No track name set or specified")
 
-    removed = delete_lap_record(
-        track_name,
-        delete_input.driver,
-        delete_input.time,
-        delete_input.recorded_at,
-    )
+    try:
+        removed = delete_lap_record(
+            track_name,
+            delete_input.driver,
+            delete_input.time,
+            delete_input.recorded_at,
+        )
+    except (OSError, ValueError) as error:
+        logger.error(f"Could not read lap records for '{track_name}': {error}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Could not read lap records for track '{track_name}'",
+        )
     if not removed:
         raise HTTPException(status_code=404, detail="No matching lap to delete")
 
