@@ -1,51 +1,25 @@
+import asyncio
 import logging
 import os
 from contextlib import asynccontextmanager
-from typing import Dict, List
 from dotenv import load_dotenv
 
 import uvicorn
 
 # Load environment variables first
 load_dotenv()
-from fastapi import FastAPI, HTTPException, Request, Path
+from fastapi import FastAPI, HTTPException, Request
 from fastapi import WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, RedirectResponse, Response
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.exceptions import RequestValidationError
 
-# Import models and CRUD operations
-from app.models.models import (
-    LapTimeInput,
-    LapTimeDeleteInput,
-    TrackNameInput,
-    TrackNameResponse,
-    TrackData,
-    ExportResponse,
-    DriverResponse,
-    User,
-    UserResponse,
-    UserListResponse,
-    driver_to_response,
-)
-from app.services.crud import (
-    get_all_drivers,
-    add_or_update_lap_time,
-    delete_driver_lap_time,
-    get_track,
-    set_track,
-    get_all_users,
-    add_user,
-    delete_user,
-    app_data,
-    state_lock,
+# Import services
+from app.services.lap_time_store import (
     set_websocket_manager,
 )
-from app.utils.helpers import generate_csv_content, update_overall_fastest_lap
-from app.services.websocket import ConnectionManager
-from app.services.track_service import track_service
-from app.dependencies.auth import check_admin_auth_middleware, get_current_user
+from app.services.websocket_manager import ConnectionManager
 
 # Configure logging based on DEBUG environment variable
 debug_mode = os.getenv("DEBUG", "false").lower() in ("true", "1", "yes", "on")
@@ -71,11 +45,10 @@ manager = ConnectionManager()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Application startup...")
-    # --- Add startup logic here ---
-    # Assign the manager to crud.py
     set_websocket_manager(manager)
+    from app.api.udp_telemetry_routes import set_main_event_loop
+    set_main_event_loop(asyncio.get_event_loop())
     yield
-    # --- Add shutdown logic here ---
     logger.info("Application shutdown...")
 
 
@@ -91,12 +64,6 @@ app.add_middleware(
     allow_methods=["*"],  # Allow all standard methods
     allow_headers=["*"],  # Allow all headers
 )
-
-
-# Add authentication middleware for admin routes
-@app.middleware("http")
-async def auth_middleware(request: Request, call_next):
-    return await check_admin_auth_middleware(request, call_next)
 
 
 # -- WebSocket Connection Management ---
@@ -147,41 +114,17 @@ async def general_exception_handler(request: Request, exc: Exception):
 
 
 # --- Import API Routers ---
-from app.api.users import router as users_router
-from app.api.drivers import router as drivers_router
-from app.api.auth import router as auth_router
-from app.api.telemetry import telemetry_router
+from app.api.display_data_routes import router as drivers_router
+from app.api.udp_telemetry_routes import telemetry_router
 
 # --- Include Routers ---
-app.include_router(auth_router)
-app.include_router(users_router)
 app.include_router(drivers_router)
 app.include_router(telemetry_router, prefix="/api/telemetry", tags=["Telemetry"])
 
 # You can still add additional routes here if necessary
 
 
-# --- Login Route ---
-@app.get("/login")
-async def login_page():
-    """Serve the login page."""
-    with open("static/login.html", "r", encoding="utf-8") as f:
-        content = f.read()
-    return Response(content=content, media_type="text/html")
-
-
 # --- Static Files Serving ---
-# Serve specific admin/display routes first
-# Ensure the paths match your folder structure
-app.mount("/admin", StaticFiles(directory="static/admin", html=True), name="admin")
-app.mount(
-    "/display", StaticFiles(directory="static/display", html=True), name="display"
-)
-app.mount(
-    "/admin/users",
-    StaticFiles(directory="static/admin/users", html=True),
-    name="users",
-)
 # Serve shared assets (like images) or a root index.html from the main static folder
 # This also acts as a fallback for other paths under /
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
@@ -189,4 +132,4 @@ app.mount("/", StaticFiles(directory="static", html=True), name="static")
 # --- Run the application ---
 if __name__ == "__main__":
     logger.info("Starting Uvicorn server...")
-    uvicorn.run("app.main:app", host="0.0.0.0", port=8080, reload=True)
+    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)

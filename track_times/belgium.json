@@ -1,0 +1,12 @@
+{
+  "track": "belgium",
+  "lap_times": [
+    {
+      "driver": "Charles Leclerc",
+      "team": "Scuderia Ferrari",
+      "time": "1:53.754",
+      "fastest_speed_kph": 309.2,
+      "is_pole_reference": true
+    }
+  ]
+}

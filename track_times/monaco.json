@@ -1,0 +1,420 @@
+{
+  "track": "monaco",
+  "lap_times": [
+    {
+      "driver": "Charles Leclerc",
+      "team": "Scuderia Ferrari",
+      "time": "1:10.270",
+      "fastest_speed_kph": 284.1,
+      "is_pole_reference": true
+    },
+    {
+      "driver": "Marc Oldenburger",
+      "team": "nhlstendensim2",
+      "time": "1:12.331",
+      "is_valid": true,
+      "fastest_speed_kph": 298.4,
+      "recorded_at": "2026-06-03T13:02:15"
+    },
+    {
+      "driver": "Marc Oldenburger",
+      "team": "nhlstendensim",
+      "time": "1:13.331",
+      "is_valid": false,
+      "fastest_speed_kph": 296.1,
+      "recorded_at": "2026-06-03T13:02:16"
+    },
+    {
+      "driver": "Herbert",
+      "team": "Oracle Red Bull Racing",
+      "time": "2:12.974",
+      "is_valid": true,
+      "fastest_speed_kph": 149.0,
+      "recorded_at": "2026-06-04T13:36:13"
+    },
+    {
+      "driver": "Caleb",
+      "team": "Mercedes-AMG Petronas F1 Team",
+      "time": "1:25.238",
+      "is_valid": false,
+      "fastest_speed_kph": 273.6,
+      "recorded_at": "2026-06-04T13:37:06"
+    },
+    {
+      "driver": "Herbert",
+      "team": "Oracle Red Bull Racing",
+      "time": "2:12.974",
+      "is_valid": false,
+      "fastest_speed_kph": 149.0,
+      "recorded_at": "2026-06-04T13:37:21"
+    },
+    {
+      "driver": "Herbert",
+      "team": "Oracle Red Bull Racing",
+      "time": "1:45.356",
+      "is_valid": true,
+      "fastest_speed_kph": 149.0,
+      "recorded_at": "2026-06-04T13:37:58"
+    },
+    {
+      "driver": "Herbert",
+      "team": "Oracle Red Bull Racing",
+      "time": "1:45.356",
+      "is_valid": false,
+      "fastest_speed_kph": 149.0,
+      "recorded_at": "2026-06-04T13:37:59"
+    },
+    {
+      "driver": "Caleb",
+      "team": "Mercedes-AMG Petronas F1 Team",
+      "time": "1:48.081",
+      "is_valid": true,
+      "fastest_speed_kph": 276.6,
+      "recorded_at": "2026-06-04T13:38:17"
+    },
+    {
+      "driver": "Caleb",
+      "team": "Mercedes-AMG Petronas F1 Team",
+      "time": "1:48.081",
+      "is_valid": false,
+      "fastest_speed_kph": 276.6,
+      "recorded_at": "2026-06-04T13:38:21"
+    },
+    {
+      "driver": "Caleb",
+      "team": "Mercedes-AMG Petronas F1 Team",
+      "time": "1:23.707",
+      "is_valid": true,
+      "fastest_speed_kph": 276.6,
+      "recorded_at": "2026-06-04T13:39:41"
+    },
+    {
+      "driver": "Herbert",
+      "team": "Oracle Red Bull Racing",
+      "time": "2:07.953",
+      "is_valid": true,
+      "fastest_speed_kph": 149.0,
+      "recorded_at": "2026-06-04T13:40:06"
+    },
+    {
+      "driver": "Herbert",
+      "team": "Oracle Red Bull Racing",
+      "time": "2:07.953",
+      "is_valid": false,
+      "fastest_speed_kph": 149.0,
+      "recorded_at": "2026-06-04T13:40:26"
+    },
+    {
+      "driver": "Caleb",
+      "team": "Mercedes-AMG Petronas F1 Team",
+      "time": "1:23.707",
+      "is_valid": false,
+      "fastest_speed_kph": 276.6,
+      "recorded_at": "2026-06-04T13:40:36"
+    },
+    {
+      "driver": "Caleb",
+      "team": "Mercedes-AMG Petronas F1 Team",
+      "time": "1:29.005",
+      "is_valid": true,
+      "fastest_speed_kph": 276.6,
+      "recorded_at": "2026-06-04T13:41:10"
+    },
+    {
+      "driver": "Caleb",
+      "team": "Mercedes-AMG Petronas F1 Team",
+      "time": "1:29.005",
+      "is_valid": false,
+      "fastest_speed_kph": 276.6,
+      "recorded_at": "2026-06-04T13:41:18"
+    },
+    {
+      "driver": "Herbert",
+      "team": "Oracle Red Bull Racing",
+      "time": "2:02.309",
+      "is_valid": true,
+      "fastest_speed_kph": 149.0,
+      "recorded_at": "2026-06-04T13:42:08"
+    },
+    {
+      "driver": "Caleb",
+      "team": "Mercedes-AMG Petronas F1 Team",
+      "time": "1:44.117",
+      "is_valid": true,
+      "fastest_speed_kph": 276.6,
+      "recorded_at": "2026-06-04T13:42:54"
+    },
+    {
+      "driver": "Herbert",
+      "team": "Oracle Red Bull Racing",
+      "time": "1:50.481",
+      "is_valid": true,
+      "fastest_speed_kph": 166.1,
+      "recorded_at": "2026-06-04T13:43:59"
+    },
+    {
+      "driver": "Caleb",
+      "team": "Mercedes-AMG Petronas F1 Team",
+      "time": "1:13.382",
+      "is_valid": true,
+      "fastest_speed_kph": 277.1,
+      "recorded_at": "2026-06-04T13:44:08"
+    },
+    {
+      "driver": "Herbert",
+      "team": "Oracle Red Bull Racing",
+      "time": "1:50.481",
+      "is_valid": false,
+      "fastest_speed_kph": 166.1,
+      "recorded_at": "2026-06-04T13:44:24"
+    },
+    {
+      "driver": "Caleb",
+      "team": "Mercedes-AMG Petronas F1 Team",
+      "time": "1:13.382",
+      "is_valid": false,
+      "fastest_speed_kph": 277.1,
+      "recorded_at": "2026-06-04T13:44:54"
+    },
+    {
+      "driver": "Justin",
+      "team": "Mercedes-AMG Petronas F1 Team",
+      "time": "1:12.387",
+      "is_valid": true,
+      "fastest_speed_kph": 277.1,
+      "recorded_at": "2026-06-04T13:45:20"
+    },
+    {
+      "driver": "Caleb",
+      "team": "Oracle Red Bull Racing",
+      "time": "1:32.816",
+      "is_valid": true,
+      "fastest_speed_kph": 272.5,
+      "recorded_at": "2026-06-04T13:53:24"
+    },
+    {
+      "driver": "Caleb",
+      "team": "Oracle Red Bull Racing",
+      "time": "1:32.816",
+      "is_valid": false,
+      "fastest_speed_kph": 272.5,
+      "recorded_at": "2026-06-04T13:53:33"
+    },
+    {
+      "driver": "Herbert",
+      "team": "Oracle Red Bull Racing",
+      "time": "1:32.816",
+      "is_valid": false,
+      "fastest_speed_kph": 276.7,
+      "recorded_at": "2026-06-04T13:54:14"
+    },
+    {
+      "driver": "Herbert",
+      "team": "Oracle Red Bull Racing",
+      "time": "2:35.296",
+      "is_valid": true,
+      "fastest_speed_kph": 276.7,
+      "recorded_at": "2026-06-04T13:55:25"
+    },
+    {
+      "driver": "Herbert",
+      "team": "Oracle Red Bull Racing",
+      "time": "2:35.296",
+      "is_valid": false,
+      "fastest_speed_kph": 276.7,
+      "recorded_at": "2026-06-04T13:55:27"
+    },
+    {
+      "driver": "Caleb",
+      "team": "Mercedes-AMG Petronas F1 Team",
+      "time": "1:12.387",
+      "is_valid": false,
+      "fastest_speed_kph": 277.1,
+      "recorded_at": "2026-06-04T13:55:39"
+    },
+    {
+      "driver": "Caleb",
+      "team": "Mercedes-AMG Petronas F1 Team",
+      "time": "1:29.026",
+      "is_valid": true,
+      "fastest_speed_kph": 277.1,
+      "recorded_at": "2026-06-04T13:56:50"
+    },
+    {
+      "driver": "Herbert",
+      "team": "Oracle Red Bull Racing",
+      "time": "1:43.974",
+      "is_valid": true,
+      "fastest_speed_kph": 276.7,
+      "recorded_at": "2026-06-04T13:57:09"
+    },
+    {
+      "driver": "Herbert",
+      "team": "Oracle Red Bull Racing",
+      "time": "1:43.974",
+      "is_valid": false,
+      "fastest_speed_kph": 276.7,
+      "recorded_at": "2026-06-04T13:57:25"
+    },
+    {
+      "driver": "Caleb",
+      "team": "Mercedes-AMG Petronas F1 Team",
+      "time": "1:29.026",
+      "is_valid": false,
+      "fastest_speed_kph": 277.1,
+      "recorded_at": "2026-06-04T13:57:26"
+    },
+    {
+      "driver": "Caleb",
+      "team": "Mercedes-AMG Petronas F1 Team",
+      "time": "1:22.762",
+      "is_valid": true,
+      "fastest_speed_kph": 277.1,
+      "recorded_at": "2026-06-04T13:58:12"
+    },
+    {
+      "driver": "Caleb",
+      "team": "Mercedes-AMG Petronas F1 Team",
+      "time": "1:22.762",
+      "is_valid": false,
+      "fastest_speed_kph": 277.1,
+      "recorded_at": "2026-06-04T13:58:15"
+    },
+    {
+      "driver": "Herbert",
+      "team": "Oracle Red Bull Racing",
+      "time": "1:39.296",
+      "is_valid": true,
+      "fastest_speed_kph": 276.7,
+      "recorded_at": "2026-06-04T13:58:49"
+    },
+    {
+      "driver": "Caleb",
+      "team": "Mercedes-AMG Petronas F1 Team",
+      "time": "1:23.846",
+      "is_valid": false,
+      "fastest_speed_kph": 277.1,
+      "recorded_at": "2026-06-04T13:59:41"
+    },
+    {
+      "driver": "Herbert",
+      "team": "Oracle Red Bull Racing",
+      "time": "1:39.296",
+      "is_valid": false,
+      "fastest_speed_kph": 276.7,
+      "recorded_at": "2026-06-04T13:59:55"
+    },
+    {
+      "driver": "Herbert",
+      "team": "Mercedes-AMG Petronas F1 Team",
+      "time": "1:23.761",
+      "is_valid": false,
+      "fastest_speed_kph": 277.1,
+      "recorded_at": "2026-06-04T14:04:20"
+    },
+    {
+      "driver": "Caleb",
+      "team": "Oracle Red Bull Racing",
+      "time": "1:41.095",
+      "is_valid": true,
+      "fastest_speed_kph": 276.7,
+      "recorded_at": "2026-06-04T14:04:21"
+    },
+    {
+      "driver": "Caleb",
+      "team": "Mercedes-AMG Petronas F1 Team",
+      "time": "1:16.248",
+      "is_valid": true,
+      "fastest_speed_kph": 277.1,
+      "recorded_at": "2026-06-04T14:05:10"
+    },
+    {
+      "driver": "Herbert",
+      "team": "Mercedes-AMG Petronas F1 Team",
+      "time": "1:16.248",
+      "is_valid": false,
+      "fastest_speed_kph": 277.1,
+      "recorded_at": "2026-06-04T14:05:13"
+    },
+    {
+      "driver": "Herbert",
+      "team": "Mercedes-AMG Petronas F1 Team",
+      "time": "1:38.028",
+      "is_valid": false,
+      "fastest_speed_kph": 277.1,
+      "recorded_at": "2026-06-04T14:06:51"
+    },
+    {
+      "driver": "Caleb",
+      "team": "Oracle Red Bull Racing",
+      "time": "1:23.151",
+      "is_valid": false,
+      "fastest_speed_kph": 276.7,
+      "recorded_at": "2026-06-04T14:09:30"
+    },
+    {
+      "driver": "Caleb",
+      "team": "Oracle Red Bull Racing",
+      "time": "1:19.550",
+      "is_valid": false,
+      "fastest_speed_kph": 276.7,
+      "recorded_at": "2026-06-04T14:10:50"
+    },
+    {
+      "driver": "Justin",
+      "team": "Mercedes-AMG Petronas F1 Team",
+      "time": "1:07.612",
+      "is_valid": false,
+      "fastest_speed_kph": 277.1,
+      "recorded_at": "2026-06-04T14:12:14"
+    },
+    {
+      "driver": "Justin",
+      "team": "Oracle Red Bull Racing",
+      "time": "1:25.945",
+      "is_valid": true,
+      "fastest_speed_kph": 276.7,
+      "recorded_at": "2026-06-04T14:13:47"
+    },
+    {
+      "driver": "Nhlstendsim2",
+      "team": "Oracle Red Bull Racing",
+      "time": "1:33.009",
+      "is_valid": true,
+      "fastest_speed_kph": 260.0,
+      "recorded_at": "2026-06-05T12:21:20"
+    },
+    {
+      "driver": "Nhlstendsim",
+      "team": "Oracle Red Bull Racing",
+      "time": "1:26.742",
+      "is_valid": true,
+      "fastest_speed_kph": 276.0,
+      "recorded_at": "2026-06-05T12:21:55"
+    },
+    {
+      "driver": "Kyan",
+      "team": "Oracle Red Bull Racing",
+      "time": "1:32.949",
+      "is_valid": true,
+      "fastest_speed_kph": 283.0,
+      "recorded_at": "2026-06-05T12:22:53"
+    },
+    {
+      "driver": "Oliver",
+      "team": "Oracle Red Bull Racing",
+      "time": "1:26.438",
+      "is_valid": true,
+      "fastest_speed_kph": 315.0,
+      "recorded_at": "2026-06-05T12:25:39"
+    },
+    {
+      "driver": "Kyan",
+      "team": "Oracle Red Bull Racing",
+      "time": "1:37.729",
+      "is_valid": true,
+      "fastest_speed_kph": 282.0,
+      "recorded_at": "2026-06-05T12:25:39"
+    }
+  ]
+}

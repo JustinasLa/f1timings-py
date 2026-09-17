@@ -1,0 +1,12 @@
+{
+  "track": "azerbaijan",
+  "lap_times": [
+    {
+      "driver": "Charles Leclerc",
+      "team": "Scuderia Ferrari",
+      "time": "1:41.365",
+      "fastest_speed_kph": 318.5,
+      "is_pole_reference": true
+    }
+  ]
+}

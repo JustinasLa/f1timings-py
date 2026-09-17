@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>F1 Timings - Live</title>
+  <link rel="stylesheet" href="/display.css">
+</head>
+<body>
+
+  <!-- Session header -->
+  <div class="session-header">
+    <div class="pos-badge">
+      <div class="pos-label">Drivers</div>
+      <div class="pos-value" id="driverCount">0</div>
+    </div>
+    <div class="session-logos">
+      <img src="img/HBOSport.png" alt="HBOSport" />
+      <img src="img/NHLStenden.png" alt="NHLStenden" />
+    </div>
+    <div class="session-info">
+      <h1 id="sessionTitle">—</h1>
+      <div class="session-location" id="sessionLocation">Waiting for session data</div>
+    </div>
+    <div class="udp-panel" id="udpPanel">
+      <div class="udp-status-line">
+        <span class="udp-status-dot" id="udpStatusDot"></span>
+        <span class="udp-status-text" id="udpStatusText">UDP Off</span>
+        <span class="udp-driver-count" id="udpDriverCount">0 drivers</span>
+      </div>
+      <div class="udp-controls">
+        <input class="udp-port-input" id="udpPortInput" type="number" min="1024" max="65535" value="20777" aria-label="UDP port">
+        <button class="udp-action-btn start" id="udpStartBtn" type="button">Start</button>
+        <button class="udp-action-btn stop" id="udpStopBtn" type="button">Stop</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main layout -->
+  <div class="main-layout">
+
+    <!-- Left: timing tables -->
+    <div class="timing-area">
+      <div class="table-section">
+        <div class="section-title">
+          <span>Stored Times</span>
+          <div class="column-settings">
+            <button class="column-settings-toggle" id="columnSettingsToggle" type="button" aria-label="Column settings" aria-expanded="false">&#9881;</button>
+            <div class="column-settings-menu" id="columnSettingsMenu">
+              <div class="column-settings-head">Show columns</div>
+              <label class="column-toggle">
+                <span class="column-toggle-label">Position (#)</span>
+                <span class="column-switch">
+                  <input type="checkbox" data-column="pos" checked>
+                  <span class="column-switch-track"></span>
+                </span>
+              </label>
+              <label class="column-toggle">
+                <span class="column-toggle-label">Top Speed</span>
+                <span class="column-switch">
+                  <input type="checkbox" data-column="topspeed" checked>
+                  <span class="column-switch-track"></span>
+                </span>
+              </label>
+              <label class="column-toggle">
+                <span class="column-toggle-label">Best Lap</span>
+                <span class="column-switch">
+                  <input type="checkbox" data-column="bestlap" checked>
+                  <span class="column-switch-track"></span>
+                </span>
+              </label>
+              <label class="column-toggle">
+                <span class="column-toggle-label">Potential</span>
+                <span class="column-switch">
+                  <input type="checkbox" data-column="potential">
+                  <span class="column-switch-track"></span>
+                </span>
+              </label>
+              <label class="column-toggle">
+                <span class="column-toggle-label">Sectors</span>
+                <span class="column-switch">
+                  <input type="checkbox" data-column="sectors" checked>
+                  <span class="column-switch-track"></span>
+                </span>
+              </label>
+              <label class="column-toggle">
+                <span class="column-toggle-label">Gap</span>
+                <span class="column-switch">
+                  <input type="checkbox" data-column="gap" checked>
+                  <span class="column-switch-track"></span>
+                </span>
+              </label>
+              <label class="column-toggle">
+                <span class="column-toggle-label">Laps</span>
+                <span class="column-switch">
+                  <input type="checkbox" data-column="laps" checked>
+                  <span class="column-switch-track"></span>
+                </span>
+              </label>
+            </div>
+          </div>
+        </div>
+        <table class="timing-table">
+          <thead>
+            <tr>
+              <th class="col-pos">#</th>
+              <th>Driver</th>
+              <th class="col-topspeed">Top Speed</th>
+              <th class="col-bestlap">Best Lap</th>
+              <th class="col-potential">Potential</th>
+              <th class="col-sectors">Sectors</th>
+              <th class="col-gap">Gap</th>
+              <th class="col-laps">Laps</th>
+            </tr>
+          </thead>
+          <tbody id="timingTableBody">
+            <!-- Rows are rendered by stored-lap-leaderboard.js -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Draggable divider: drag left/right to resize the two panes (drag right to
+         shrink the map, left to enlarge it). -->
+    <div class="layout-divider" id="layoutDivider" role="separator" aria-orientation="vertical" aria-label="Resize panels" title="Drag to resize"></div>
+
+    <!-- Right: track map -->
+    <div class="track-area">
+      <div class="track-header">
+        <div class="track-header-main">
+          <span class="track-header-title" id="trackHeaderName">Track Map</span>
+          <div class="track-dropdown">
+            <button class="track-select-toggle" id="trackSelectToggle" type="button" aria-label="Switch track" aria-expanded="false">+</button>
+            <div class="track-select-menu" id="trackSelectMenu"></div>
+          </div>
+        </div>
+        <span class="fastest-lap-pill" id="fastestLapPill" style="display:none">--:--.---</span>
+      </div>
+      <div class="track-canvas-wrap">
+        <!-- Top overlay holding the pole-lap reference and the lap notifications
+             side by side, pinned to the top of the map. -->
+        <div class="map-top-overlay">
+          <!-- Pole / track-record lap shown on the map (the reference lap marked
+               with "is_pole_reference" in the track_times file, e.g. Leclerc at Monaco). -->
+          <div class="pole-lap-card" id="poleLapCard" style="display:none">
+            <div class="pole-lap-label">2024 Pole Lap</div>
+            <div class="pole-lap-driver">
+              <span class="pole-lap-dot" id="poleLapDot"></span>
+              <span id="poleLapDriver"></span>
+            </div>
+            <div class="pole-lap-time" id="poleLapTime">--:--.---</div>
+            <div class="pole-lap-meta" id="poleLapMeta"></div>
+          </div>
+          <!-- Lap-time notifications (new best / fastest lap) appear here, next
+               to the pole-lap reference. -->
+          <div id="lap-toast-container"></div>
+          <!-- Live track conditions from the F1 24 session packet, pinned to the
+               top-right of the map. Hidden until a session packet arrives. -->
+          <div class="map-conditions" id="mapConditions" style="display:none">
+            <div class="condition-marker">
+              <div class="condition-label">Track</div>
+              <div class="condition-value" id="conditionTrackTemp">--&deg;C</div>
+            </div>
+            <div class="condition-marker">
+              <div class="condition-label">Air</div>
+              <div class="condition-value" id="conditionAirTemp">--&deg;C</div>
+            </div>
+          </div>
+        </div>
+        <canvas id="trackCanvas" width="1200" height="800" style="display:none"></canvas>
+        <div class="track-placeholder" id="trackPlaceholder">
+          <div class="track-placeholder-icon">&#127937;</div>
+          <div>Track visualization</div>
+          <div style="font-size:11px;opacity:0.6;margin-top:4px">Select a track from the map header</div>
+        </div>
+      </div>
+      <div class="driver-alias-panel">
+        <div class="driver-alias-title">Player Names</div>
+        <div class="driver-alias-list" id="driverAliasList">
+          <div class="driver-alias-empty">Waiting for live drivers...</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div id="toast-container"></div>
+
+  <!-- Modules loaded in dependency order: config/state/utils first, features next, bootstrap last -->
+  <script src="/js/dashboard-settings.js"></script>
+  <script src="/js/shared-dashboard-state.js"></script>
+  <script src="/js/formatting-and-fetch-helpers.js"></script>
+  <script src="/js/stored-lap-leaderboard.js"></script>
+  <script src="/js/leaderboard-column-settings.js"></script>
+  <script src="/js/layout-divider.js"></script>
+  <script src="/js/track-map-canvas.js"></script>
+  <script src="/js/track-conditions-markers.js"></script>
+  <script src="/js/player-name-aliases.js"></script>
+  <script src="/js/udp-listener-controls.js"></script>
+  <script src="/js/lap-notification-toasts.js"></script>
+  <script src="/js/poll-api-and-refresh-display.js"></script>
+  <script src="/js/websocket-live-updates.js"></script>
+  <script src="/js/start-dashboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "track": "mexico",
+  "lap_times": [
+    {
+      "driver": "Carlos Sainz",
+      "team": "Scuderia Ferrari",
+      "time": "1:15.946",
+      "fastest_speed_kph": 343.8,
+      "is_pole_reference": true
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "track": "australia",
+  "lap_times": [
+    {
+      "driver": "Max Verstappen",
+      "team": "Oracle Red Bull Racing",
+      "time": "1:15.915",
+      "fastest_speed_kph": 322.0,
+      "is_pole_reference": true
+    }
+  ]
+}

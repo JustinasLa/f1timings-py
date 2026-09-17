@@ -1,0 +1,124 @@
+{
+  "track": "hungary",
+  "lap_times": [
+    {
+      "driver": "Lando Norris",
+      "team": "McLaren F1 Team",
+      "time": "1:15.227",
+      "fastest_speed_kph": 306.4,
+      "is_pole_reference": true
+    },
+    {
+      "driver": "Nhlstendsim",
+      "team": "Oracle Red Bull Racing",
+      "time": "1:27.466",
+      "is_valid": true,
+      "fastest_speed_kph": 311.0,
+      "recorded_at": "2026-06-05T12:23:23"
+    },
+    {
+      "driver": "Kyan",
+      "team": "Oracle Red Bull Racing",
+      "time": "1:38.923",
+      "is_valid": true,
+      "fastest_speed_kph": 243.0,
+      "recorded_at": "2026-06-05T12:26:10"
+    },
+    {
+      "driver": "Oliver",
+      "team": "Oracle Red Bull Racing",
+      "time": "1:25.594",
+      "is_valid": true,
+      "fastest_speed_kph": 311.0,
+      "recorded_at": "2026-06-05T12:27:18"
+    },
+    {
+      "driver": "Nhlstendsim2",
+      "team": "Oracle Red Bull Racing",
+      "time": "1:25.815",
+      "is_valid": true,
+      "fastest_speed_kph": 284.0,
+      "recorded_at": "2026-06-05T12:30:04"
+    },
+    {
+      "driver": "Nhlstendsim2",
+      "team": "Oracle Red Bull Racing",
+      "time": "1:26.984",
+      "is_valid": true,
+      "fastest_speed_kph": 290.0,
+      "recorded_at": "2026-06-05T12:31:31"
+    },
+    {
+      "driver": "Nhlstendsim",
+      "team": "Oracle Red Bull Racing",
+      "time": "1:23.976",
+      "is_valid": true,
+      "fastest_speed_kph": 314.0,
+      "recorded_at": "2026-06-05T12:32:11"
+    },
+    {
+      "driver": "Nhlstendsim2",
+      "team": "Oracle Red Bull Racing",
+      "time": "1:25.677",
+      "is_valid": true,
+      "fastest_speed_kph": 300.0,
+      "recorded_at": "2026-06-05T12:32:57"
+    },
+    {
+      "driver": "Nhlstendsim",
+      "team": "Oracle Red Bull Racing",
+      "time": "1:25.239",
+      "is_valid": true,
+      "fastest_speed_kph": 313.0,
+      "recorded_at": "2026-06-05T12:33:36"
+    },
+    {
+      "driver": "Nhlstendsim",
+      "team": "Oracle Red Bull Racing",
+      "time": "1:28.933",
+      "is_valid": false,
+      "fastest_speed_kph": 314.0,
+      "recorded_at": "2026-06-05T12:35:37"
+    },
+    {
+      "driver": "Nhlstendsim2",
+      "team": "Oracle Red Bull Racing",
+      "time": "1:25.237",
+      "is_valid": true,
+      "fastest_speed_kph": 313.0,
+      "recorded_at": "2026-06-05T12:35:57"
+    },
+    {
+      "driver": "Nhlstendsim",
+      "team": "Oracle Red Bull Racing",
+      "time": "1:23.186",
+      "is_valid": true,
+      "fastest_speed_kph": 258.0,
+      "recorded_at": "2026-06-05T12:37:01"
+    },
+    {
+      "driver": "Nhlstendsim2",
+      "team": "Oracle Red Bull Racing",
+      "time": "1:23.310",
+      "is_valid": true,
+      "fastest_speed_kph": 268.0,
+      "recorded_at": "2026-06-05T12:37:20"
+    },
+    {
+      "driver": "Amir",
+      "team": "Oracle Red Bull Racing",
+      "time": "1:27.321",
+      "is_valid": true,
+      "fastest_speed_kph": 314.0,
+      "recorded_at": "2026-06-05T12:38:28"
+    },
+    {
+      "driver": "Oliver",
+      "team": "Oracle Red Bull Racing",
+      "time": "1:22.682",
+      "is_valid": true,
+      "fastest_speed_kph": 312.0,
+      "recorded_at": "2026-06-05T12:38:42"
+    }
+  ]
+}

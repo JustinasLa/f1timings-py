@@ -1,0 +1,12 @@
+{
+  "track": "great_britain",
+  "lap_times": [
+    {
+      "driver": "George Russell",
+      "team": "Mercedes AMG-Petronas F1 Team",
+      "time": "1:25.819",
+      "fastest_speed_kph": 323.7,
+      "is_pole_reference": true
+    }
+  ]
+}

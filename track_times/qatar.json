@@ -1,0 +1,12 @@
+{
+  "track": "qatar",
+  "lap_times": [
+    {
+      "driver": "George Russell",
+      "team": "Mercedes-AMG Petronas F1 Team",
+      "time": "1:20.575",
+      "fastest_speed_kph": 321.0,
+      "is_pole_reference": true
+    }
+  ]
+}

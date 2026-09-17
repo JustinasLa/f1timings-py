@@ -1,15 +1,23 @@
 __pycache__/
 *.py[cod]
 *$py.class
-
 *.so
 
-.DS_Store
 .env
+*.env
 .venv/
 venv/
 ENV/
 env/
-*.env
 
+.DS_Store
+.idea/
+*.iml
+.vscode/
+
+fastf1_cache/
 /exports/
+.pytest_cache/
+
+.claude/
+CLAUDE.md

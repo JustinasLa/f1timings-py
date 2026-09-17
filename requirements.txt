@@ -1,9 +1,4 @@
 fastapi
 uvicorn[standard]
 python-dotenv
-python-multipart
-aiofiles
-python-jose[cryptography]
-bcrypt
-itsdangerous
-f1-24-telemetry # May need: pip install git+https://github.com/xavierdubuc/f1-24-telemetry.git
+f1-24-telemetry @ git+https://github.com/xavierdubuc/f1-24-telemetry.git

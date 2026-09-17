@@ -1,0 +1,12 @@
+{
+  "track": "imola",
+  "lap_times": [
+    {
+      "driver": "Max Verstappen",
+      "team": "Oracle Red Bull Racing",
+      "time": "1:14.746",
+      "fastest_speed_kph": 297.8,
+      "is_pole_reference": true
+    }
+  ]
+}

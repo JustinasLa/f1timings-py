@@ -1,0 +1,12 @@
+{
+  "track": "singapore",
+  "lap_times": [
+    {
+      "driver": "Lando Norris",
+      "team": "McLaren F1 Team",
+      "time": "1:30.119",
+      "fastest_speed_kph": 303.1,
+      "is_pole_reference": true
+    }
+  ]
+}

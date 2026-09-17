@@ -1,0 +1,1085 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500;600;700&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg:        #0d1117;
+  --bg2:       #161b22;
+  --bg3:       #21262d;
+  --border:    #30363d;
+  --text:      #e6edf3;
+  --text-muted:#8b949e;
+  --green:     #3fb950;
+  --purple:    #a371f7;
+  --blue:      #58a6ff;
+  --yellow:    #d29922;
+  --red:       #f85149;
+  --teal:      #39d353;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Session header ── */
+.session-header {
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-shrink: 0;
+}
+.pos-badge {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 12px;
+  text-align: center;
+  min-width: 48px;
+}
+.pos-badge .pos-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.pos-badge .pos-value {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.session-info {
+  flex: 1;
+  text-align: center;
+}
+.session-info h1 {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text);
+}
+.track-country-flag {
+  width: 1.25em;
+  height: 1.25em;
+  margin-right: 0.4em;
+  vertical-align: -0.2em;
+}
+.session-info .session-location {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+.udp-panel {
+  min-width: 235px;
+  padding: 7px 9px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+}
+.udp-status-line {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.udp-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--red);
+  box-shadow: 0 0 0 3px rgba(248, 81, 73, 0.12);
+}
+.udp-panel.running .udp-status-dot {
+  background: var(--green);
+  box-shadow: 0 0 0 3px rgba(63, 185, 80, 0.12);
+}
+.udp-panel.pending .udp-status-dot {
+  background: var(--yellow);
+  box-shadow: 0 0 0 3px rgba(210, 153, 34, 0.14);
+}
+.udp-status-text {
+  color: var(--text);
+}
+.udp-driver-count {
+  margin-left: auto;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 10px;
+}
+.udp-controls {
+  display: grid;
+  grid-template-columns: 66px 1fr 1fr;
+  gap: 6px;
+}
+.udp-port-input,
+.udp-action-btn {
+  height: 26px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg2);
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 600;
+}
+.udp-port-input {
+  width: 100%;
+  padding: 0 6px;
+  font-family: 'Roboto Mono', monospace;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+.udp-port-input::-webkit-outer-spin-button,
+.udp-port-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.udp-port-input:focus,
+.udp-action-btn:focus {
+  outline: none;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 2px rgba(31, 111, 235, 0.12);
+}
+.udp-action-btn {
+  cursor: pointer;
+}
+.udp-action-btn.start:hover {
+  border-color: var(--green);
+  color: var(--green);
+}
+.udp-action-btn.stop:hover {
+  border-color: var(--red);
+  color: var(--red);
+}
+.udp-action-btn:disabled,
+.udp-port-input:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.session-logos {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.session-logos img {
+  height: 38px;
+  max-width: 120px;
+  object-fit: contain;
+}
+/* ── Main layout ── */
+.main-layout {
+  display: grid;
+  /* Left pane | draggable divider | right pane. The left width is driven by the
+     --left-width variable so the divider can resize it (set by layout-divider.js
+     and saved between sessions); the right pane takes whatever is left. Both
+     panes use minmax(0, …) so they can shrink without overflowing. */
+  grid-template-columns: minmax(0, var(--left-width, 1fr)) 6px minmax(0, 1fr);
+  flex: 1;
+  overflow: hidden;
+  gap: 0;
+  /* Glide the divider when it auto-fits to a column toggle. The transition is
+     switched off during a manual drag (below) so the divider tracks the cursor
+     exactly instead of lagging behind it. */
+  transition: grid-template-columns 0.18s ease;
+}
+body.layout-resizing .main-layout {
+  transition: none;
+}
+
+/* ── Left: timing area ── */
+.timing-area {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Draggable divider between the timing table and the track map. Drag it right to
+   shrink the map, left to enlarge it. */
+.layout-divider {
+  background: var(--border);
+  cursor: col-resize;
+  /* A wider invisible hit area around the thin visible line makes it easy to grab
+     without making the line itself look thick. */
+  position: relative;
+}
+.layout-divider::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -4px;
+  right: -4px;
+}
+.layout-divider:hover,
+.layout-divider.dragging {
+  background: var(--text-muted);
+}
+/* While dragging, stop the page selecting text and keep the resize cursor. */
+body.layout-resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
+.table-section {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+}
+.table-section::-webkit-scrollbar { width: 6px; }
+.table-section::-webkit-scrollbar-track { background: var(--bg); }
+.table-section::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+.section-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding: 10px 16px 6px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ── Leaderboard column settings (gear button + switches) ── */
+.column-settings {
+  position: relative;
+}
+.column-settings-toggle {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: 4px;
+  width: 24px;
+  height: 22px;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+.column-settings-toggle:hover {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+.column-settings-menu {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: 28px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px;
+  min-width: 168px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+  z-index: 5;
+}
+.column-settings-menu.open {
+  display: block;
+}
+.column-settings-head {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+/* One switch row: label on the left, the switch on the right. */
+.column-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 5px 4px;
+  cursor: pointer;
+}
+.column-toggle-label {
+  font-size: 12px;
+  color: var(--text);
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 500;
+}
+/* The switch itself: a rounded track with a sliding knob. The real checkbox is
+   laid over the top, invisible, so clicking anywhere on the switch toggles it. */
+.column-switch {
+  position: relative;
+  display: inline-block;
+  width: 34px;
+  height: 18px;
+  flex-shrink: 0;
+}
+.column-switch input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.column-switch-track {
+  position: absolute;
+  inset: 0;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  transition: background 0.15s, border-color 0.15s;
+}
+.column-switch-track::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition: transform 0.15s, background 0.15s;
+}
+.column-switch input:checked + .column-switch-track {
+  background: var(--blue);
+  border-color: var(--blue);
+}
+.column-switch input:checked + .column-switch-track::before {
+  transform: translateX(16px);
+  background: #fff;
+}
+
+/* Hide a column's header and cells when its switch is off. */
+.timing-table.hide-col-pos .col-pos,
+.timing-table.hide-col-topspeed .col-topspeed,
+.timing-table.hide-col-bestlap .col-bestlap,
+.timing-table.hide-col-potential .col-potential,
+.timing-table.hide-col-sectors .col-sectors,
+.timing-table.hide-col-gap .col-gap,
+.timing-table.hide-col-laps .col-laps {
+  display: none;
+}
+
+/* The Sectors cell holds an inner row of three coloured boxes. The cell stays a
+   normal table cell (so row height and alignment match the other columns); the
+   flex layout lives on the inner row, not on the <td>. */
+.sectors-cell {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.sector-box-row {
+  display: inline-flex;
+  gap: 4px;
+  vertical-align: middle;
+}
+
+/* One sector time box. The colour says how good the sector is:
+   purple = fastest of anyone, green = the driver's own best, yellow = slower
+   than their best, red = the lap was invalid. A box with no time yet is plain.
+   These use the same theme colours as the Best Lap badge so they match. */
+.sector-box {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  min-width: 46px;
+  text-align: center;
+  border: 1px solid transparent;
+}
+.sector-box.sector-purple {
+  background: rgba(163, 113, 247, 0.15);
+  color: var(--purple);
+  border-color: rgba(163, 113, 247, 0.3);
+}
+.sector-box.sector-green {
+  background: rgba(63, 185, 80, 0.1);
+  color: var(--green);
+  border-color: rgba(63, 185, 80, 0.25);
+}
+.sector-box.sector-yellow {
+  background: rgba(210, 153, 34, 0.15);
+  color: var(--yellow);
+  border-color: rgba(210, 153, 34, 0.35);
+}
+.sector-box.sector-invalid {
+  background: rgba(248, 81, 73, 0.15);
+  color: var(--red);
+  border-color: rgba(248, 81, 73, 0.35);
+}
+.sector-box.sector-none {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-muted);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+/* ── Timing table ── */
+.timing-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.timing-table thead {
+  position: sticky;
+  top: 33px;
+  z-index: 1;
+}
+.timing-table th {
+  background: var(--bg3);
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 7px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.timing-table th:first-child { width: 36px; text-align: center; }
+.timing-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.timing-table tbody tr:hover { background: rgba(255,255,255,0.03); }
+.timing-table tbody tr.fastest-row { background: rgba(163, 113, 247, 0.06); }
+.timing-table tbody tr.invalid-row { background: rgba(248, 81, 73, 0.05); }
+
+.timing-table tbody tr.clickable-row { cursor: pointer; }
+.timing-table tbody tr.clickable-row.expanded { background: rgba(255,255,255,0.05); }
+
+/* Boxed +/- button that clearly shows a row can be opened or collapsed. */
+.expand-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-right: 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg2);
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  vertical-align: middle;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.clickable-row:hover .expand-toggle {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+
+/* Expanded detail rows showing a driver's recent laps. Each lap is its own row
+   reusing the main table's columns. The rows are zebra striped (very slightly,
+   lighter then darker) for easier reading; the first row is the lighter shade. */
+.lap-detail-row td { background: var(--bg3); }
+.lap-detail-row:hover td { background: var(--bg3); }
+.lap-detail-row.detail-light td,
+.lap-detail-row.detail-light:hover td { background: #262c34; }
+.lap-detail-row.detail-dark td,
+.lap-detail-row.detail-dark:hover td { background: var(--bg3); }
+/* The clock (when the lap was set), shown in the driver-name column. */
+.lap-detail-when {
+  color: var(--text-muted);
+  font-family: 'Roboto Mono', monospace;
+}
+/* Square X box in the position column of each recent lap that deletes that saved
+   lap. Muted by default, turns red on hover so it reads clearly as a remove
+   action. */
+.lap-delete-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+}
+.lap-delete-btn:hover {
+  color: var(--red);
+  border-color: var(--red);
+}
+/* Everything in the dropdown rows is 20% smaller than the main row, so the
+   expanded laps read as secondary detail. */
+.lap-detail-when { font-size: 9.6px; }                /* was 12px */
+.lap-detail-row .td-laps { font-size: 9.6px; }        /* top speed, gap, laps: was 12px */
+.lap-detail-row .laptime-badge { font-size: 10.4px; } /* was 13px */
+.lap-detail-row .sector-box { font-size: 8.8px; }     /* was 11px */
+
+.laptime-badge.invalid {
+  background: rgba(248, 81, 73, 0.15);
+  color: var(--red);
+  border: 1px solid rgba(248, 81, 73, 0.35);
+}
+
+.td-pos {
+  text-align: center;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text-muted);
+  width: 36px;
+}
+.td-pos.p1 { color: var(--yellow); }
+.td-pos.p2 { color: #8b949e; }
+.td-pos.p3 { color: #c9623a; }
+
+.driver-name {
+  font-weight: 600;
+  color: var(--text);
+  font-size: 13px;
+}
+.team-name {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+.team-dot {
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+.laptime-badge {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 4px;
+  display: inline-block;
+}
+.laptime-badge.fastest {
+  background: rgba(163, 113, 247, 0.15);
+  color: var(--purple);
+  border: 1px solid rgba(163, 113, 247, 0.3);
+}
+.laptime-badge.normal {
+  background: rgba(63, 185, 80, 0.1);
+  color: var(--green);
+  border: 1px solid rgba(63, 185, 80, 0.25);
+}
+
+.td-laps {
+  color: var(--text-muted);
+  font-family: 'Roboto Mono', monospace;
+  font-size: 12px;
+}
+
+.sector-badges {
+  display: inline-flex;
+  gap: 5px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+.sector-badge {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+  display: inline-block;
+  white-space: nowrap;
+}
+.sector-badge.s1 {
+  background: rgba(210, 153, 34, 0.15);
+  color: #e3a020;
+  border: 1px solid rgba(210, 153, 34, 0.35);
+}
+.sector-badge.s2 {
+  background: rgba(163, 113, 247, 0.15);
+  color: var(--purple);
+  border: 1px solid rgba(163, 113, 247, 0.3);
+}
+.no-data-row td {
+  text-align: center;
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 30px;
+}
+
+/* ── Right: track area ── */
+.track-area {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  overflow: hidden;
+}
+.track-header {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+.track-header-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.track-header-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  white-space: nowrap;
+}
+.track-dropdown {
+  position: relative;
+  flex-shrink: 0;
+}
+.track-select-toggle {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+.track-select-toggle:hover,
+.track-select-toggle[aria-expanded="true"] {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+.track-select-menu {
+  position: absolute;
+  top: 26px;
+  left: 0;
+  z-index: 20;
+  display: none;
+  min-width: 190px;
+  max-height: 260px;
+  overflow-y: auto;
+  background: var(--bg2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
+  padding: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(139, 148, 158, 0.45) transparent;
+}
+.track-select-menu::-webkit-scrollbar {
+  width: 6px;
+}
+.track-select-menu::-webkit-scrollbar-track {
+  background: transparent;
+}
+.track-select-menu::-webkit-scrollbar-thumb {
+  background: rgba(139, 148, 158, 0.35);
+  border-radius: 999px;
+}
+.track-select-menu::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 148, 158, 0.55);
+}
+.track-select-menu.open {
+  display: block;
+}
+.track-select-option {
+  width: 100%;
+  display: block;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 8px;
+  text-align: left;
+}
+.track-select-option:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+}
+.track-select-option.active {
+  background: rgba(163, 113, 247, 0.14);
+  color: var(--purple);
+}
+.fastest-lap-pill {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(163, 113, 247, 0.15);
+  color: var(--purple);
+  border: 1px solid rgba(163, 113, 247, 0.3);
+  border-radius: 20px;
+  padding: 2px 10px;
+}
+.fastest-lap-sectors {
+  display: inline-flex;
+  gap: 5px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+.track-canvas-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  position: relative;
+  min-height: 0;
+}
+#trackCanvas {
+  max-width: 100%;
+  max-height: 100%;
+}
+.track-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 13px;
+  gap: 8px;
+  text-align: center;
+}
+.track-placeholder-icon { font-size: 36px; opacity: 0.4; }
+
+/* Overlay across the top of the map holding the pole-lap card and the lap
+   notifications side by side, so the toasts sit next to the pole reference. */
+.map-top-overlay {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  right: 14px;
+  z-index: 2;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  pointer-events: none;
+}
+
+/* Pole / track-record lap card, shown at the top-left of the map. */
+.pole-lap-card {
+  flex-shrink: 0;
+  background: rgba(13, 17, 23, 0.78);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  pointer-events: none;
+}
+
+/* Lap notifications sit in the gap between the pole-lap card on the left and the
+   condition markers on the right, stacking downward. The container fills that
+   gap (flex:1 with min-width:0 so it can shrink), and align-items:flex-start
+   keeps each toast sized to its own content so it never stretches under the
+   markers. */
+#lap-toast-container {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  pointer-events: none;
+}
+.pole-lap-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--purple);
+  margin-bottom: 3px;
+}
+.pole-lap-driver {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+.pole-lap-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--purple);
+}
+.pole-lap-time {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  margin-top: 2px;
+}
+.pole-lap-meta {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* Live track-condition markers (track temp, air temp, time of day, weather)
+   pinned to the top-right of the map. They sit as the rightmost item in the top
+   overlay so they never overlap the pole card or the lap toasts. */
+.map-conditions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  margin-left: auto;
+  pointer-events: none;
+}
+.condition-marker {
+  background: rgba(13, 17, 23, 0.78);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  min-width: 52px;
+  text-align: center;
+}
+.condition-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 3px;
+}
+.condition-value {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.driver-alias-panel {
+  border-top: 1px solid var(--border);
+  padding: 8px 14px;
+  flex-shrink: 0;
+}
+.driver-alias-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 6px;
+}
+.driver-alias-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.driver-alias-row {
+  display: grid;
+  grid-template-columns: 10px minmax(92px, 1fr) minmax(120px, 1.2fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+.driver-alias-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid #fff;
+}
+.driver-alias-raw {
+  color: var(--text-muted);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.driver-alias-input {
+  min-width: 0;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 5px 7px;
+  font-size: 12px;
+}
+.driver-alias-save {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 5px 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.driver-alias-save:hover {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+.driver-alias-empty {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-style: italic;
+}
+
+/* ── Lap toast notifications ── */
+#toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+/* The lap toast mirrors the pole-lap card's exact style. Only the accent colour
+   (label + dot + sector boxes) changes to show how good the lap was:
+   purple = overall fastest, green = personal best, yellow = any other lap,
+   red = invalid. */
+.lap-toast {
+  background: rgba(13, 17, 23, 0.78);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  /* Never grow past the gap between the pole card and the markers. */
+  max-width: 100%;
+  pointer-events: none;
+  animation: toast-in 0.25s ease forwards;
+}
+.lap-toast.fading {
+  animation: toast-out 0.4s ease forwards;
+}
+.lap-toast-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: 3px;
+}
+/* Driver name and lap time sit in one row, left to right. The sector boxes go on
+   their own line below this (see .lap-toast-sectors). */
+.lap-toast-line {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.lap-toast-driver {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+.lap-toast-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.lap-toast-time {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+}
+.lap-toast-sectors {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+/* Accent colour per lap quality, applied to the label and the driver dot. */
+.lap-toast.fastest .lap-toast-label { color: var(--purple); }
+.lap-toast.fastest .lap-toast-dot { background: var(--purple); }
+.lap-toast.best .lap-toast-label { color: var(--green); }
+.lap-toast.best .lap-toast-dot { background: var(--green); }
+.lap-toast.normal .lap-toast-label { color: var(--yellow); }
+.lap-toast.normal .lap-toast-dot { background: var(--yellow); }
+.lap-toast.invalid .lap-toast-label { color: var(--red); }
+.lap-toast.invalid .lap-toast-dot { background: var(--red); }
+
+/* Shared driver line for the generic info toast (bottom-right). */
+.toast-driver {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Generic text feedback toast (e.g. a player name was saved). */
+.info-toast {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  min-width: 240px;
+  max-width: 320px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  animation: toast-in 0.25s ease forwards;
+}
+.info-toast.fading {
+  animation: toast-out 0.4s ease forwards;
+}
+.info-toast-message {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--green);
+}
+.info-toast.error .info-toast-message {
+  color: var(--red);
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(30px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes toast-out {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(30px); }
+}
+
+/* ── Chat / session info ── */
+.chat-area {
+  border-top: 1px solid var(--border);
+  padding: 8px 14px;
+  flex-shrink: 0;
+}
+.chat-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 4px;
+}
+.chat-body {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-style: italic;
+}

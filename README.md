@@ -4,7 +4,7 @@
 
 **Actively Developed Python implementation for F1 Timing and Telemetry (using FastAPI).**
 
-This project provides a web API to track F1 lap times, manage driver data, and export standings. It serves static frontends for administration and display. Future development aims to integrate real-time telemetry data received via UDP from F1 simulation games (e.g., F1 24) and push live updates via WebSockets.
+This project provides a display dashboard for F1 lap timing and live telemetry. It reads saved lap records from JSON files, ingests UDP telemetry from F1 24, and pushes live updates via WebSockets.
 
 This is the successor to the original [f1timings-rs](https://github.com/edoardo-morosanu/f1timings-rs) Rust project.
 
@@ -20,10 +20,8 @@ This is the successor to the original [f1timings-rs](https://github.com/edoardo-
   - Live telemetry data endpoint (`/api/drivers/live`) for real-time driver position data
   - Track data visualization endpoint (`/api/track/data`) for circuit layouts
   - Sophisticated lap time parsing supporting multiple formats (`mm:ss.sss`, `mm.ss.sss`, `ss.sss`, plain seconds) via Pydantic models
-- **Data Storage:** In-memory storage for drivers and track info, using `asyncio.Lock` for safe concurrent access
-- **Data Export (`GET /api/export`):**
-  - Exports current standings (sorted by fastest lap) to timestamped CSV files in an `exports/` directory, including calculated points
-- **Static File Serving:** Serves static HTML/JS/CSS frontends from `static/admin`, `static/display`, and the root `static` directory
+- **Data Storage:** Saved lap records and track data are read from JSON files; live telemetry state is kept in memory with `asyncio.Lock` for safe concurrent access
+- **Static File Serving:** Serves the display frontend directly from the root `static` directory
 - **WebSocket Integration:**
   - Real-time updates via `/ws` endpoint for connected clients
   - Broadcasts notifications for lap time updates, user changes, and track changes
@@ -113,8 +111,7 @@ The F1 timing dashboard underwent major performance optimization to handle real-
 - **Async Server:** Uvicorn
 - **Concurrency:** asyncio (`async`/`await`, `asyncio.Lock`)
 - **Real-time Communication:** WebSockets
-- **Async File I/O:** aiofiles (for export)
-- **Data Storage:** In-memory Python dictionaries managed within Pydantic models.
+- **Data Storage:** JSON files for saved records/track data plus in-memory telemetry state.
 - **Frontend Technologies:**
   - HTML5 Canvas API for high-performance graphics rendering
   - Advanced JavaScript with Canvas 2D context manipulation

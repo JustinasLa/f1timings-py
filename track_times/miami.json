@@ -1,0 +1,12 @@
+{
+  "track": "miami",
+  "lap_times": [
+    {
+      "driver": "Max Verstappen",
+      "team": "Oracle Red Bull Racing",
+      "time": "1:27.241",
+      "fastest_speed_kph": 338.2,
+      "is_pole_reference": true
+    }
+  ]
+}

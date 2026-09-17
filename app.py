@@ -1,6 +1,16 @@
 import uvicorn
+import importlib
+import sys
+import types
+from pathlib import Path
 
 if __name__ == "__main__":
     print("Starting F1 Timings application...")
-    # Use string reference - this tells uvicorn to load the module correctly
-    uvicorn.run("app.main:app", host="0.0.0.0", port=8080, reload=True)
+
+    package_dir = Path(__file__).resolve().parent / "app"
+    app_package = types.ModuleType("app")
+    app_package.__path__ = [str(package_dir)]
+    sys.modules["app"] = app_package
+
+    fastapi_app = importlib.import_module("app.main").app
+    uvicorn.run(fastapi_app, host="0.0.0.0", port=8000)

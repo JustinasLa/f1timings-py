@@ -1,0 +1,12 @@
+{
+  "track": "las_vegas",
+  "lap_times": [
+    {
+      "driver": "George Russell",
+      "team": "Mercedes-AMG Petronas F1 Team",
+      "time": "1:32.312",
+      "fastest_speed_kph": 339.8,
+      "is_pole_reference": true
+    }
+  ]
+}

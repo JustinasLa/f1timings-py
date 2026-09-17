@@ -1,0 +1,12 @@
+{
+  "track": "canada",
+  "lap_times": [
+    {
+      "driver": "George Russell",
+      "team": "Mercedes AMG-Petronas F1 Team",
+      "time": "1:12.000",
+      "fastest_speed_kph": 331.0,
+      "is_pole_reference": true
+    }
+  ]
+}
