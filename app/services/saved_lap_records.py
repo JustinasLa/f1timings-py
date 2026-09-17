@@ -119,11 +119,16 @@ def write_track_records(track_name, lap_times):
         finally:
             tmp_file.close()
 
+        os.chmod(tmp_path, 0o644)
+
         os.replace(tmp_path, file_path)
         return True
     except (OSError, TypeError, ValueError) as error:
         if tmp_path and os.path.exists(tmp_path):
-            os.remove(tmp_path)
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
         logger.warning(f"Could not write lap times for '{track_name}': {error}")
         return False
 
