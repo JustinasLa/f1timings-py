@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 
 import pytest
@@ -108,3 +109,124 @@ def test_make_safe_file_name_strips_unsafe_characters(raw):
     assert "/" not in safe_name
     assert "\\" not in safe_name
     assert ".." not in safe_name
+
+
+def test_load_track_records_missing_file_returns_empty_list(tmp_path, monkeypatch):
+    monkeypatch.setattr(slr, "TRACK_TIMES_DIR", str(tmp_path))
+
+    assert slr.load_track_records(TRACK) == []
+
+
+def test_load_track_records_invalid_json_raises_value_error(tmp_path, monkeypatch):
+    monkeypatch.setattr(slr, "TRACK_TIMES_DIR", str(tmp_path))
+    _track_file(tmp_path).write_text("{not json", encoding="utf-8")
+
+    with pytest.raises(ValueError):
+        slr.load_track_records(TRACK)
+
+
+def test_load_track_records_bare_list_raises_value_error(tmp_path, monkeypatch):
+    monkeypatch.setattr(slr, "TRACK_TIMES_DIR", str(tmp_path))
+    _track_file(tmp_path).write_text("[]", encoding="utf-8")
+
+    with pytest.raises(ValueError):
+        slr.load_track_records(TRACK)
+
+
+def test_load_track_records_lap_times_not_list_raises_value_error(tmp_path, monkeypatch):
+    monkeypatch.setattr(slr, "TRACK_TIMES_DIR", str(tmp_path))
+    _track_file(tmp_path).write_text(
+        json.dumps({"lap_times": "nope"}), encoding="utf-8"
+    )
+
+    with pytest.raises(ValueError):
+        slr.load_track_records(TRACK)
+
+
+def test_load_track_records_returns_lap_times_list(tmp_path, monkeypatch):
+    monkeypatch.setattr(slr, "TRACK_TIMES_DIR", str(tmp_path))
+    record = {"driver": "a"}
+    _track_file(tmp_path).write_text(
+        json.dumps({"lap_times": [record]}), encoding="utf-8"
+    )
+
+    assert slr.load_track_records(TRACK) == [record]
+
+
+def test_save_lap_record_corrupt_file_leaves_file_untouched_and_logs_error(
+    tmp_path, monkeypatch, caplog
+):
+    monkeypatch.setattr(slr, "TRACK_TIMES_DIR", str(tmp_path))
+    file_path = _track_file(tmp_path)
+    file_path.write_text("{not json", encoding="utf-8")
+    original_bytes = file_path.read_bytes()
+
+    with caplog.at_level(logging.ERROR, logger=slr.logger.name):
+        slr.save_lap_record(TRACK, "Max", "Red Bull", "1:12.000", True, 300.0)
+
+    assert file_path.read_bytes() == original_bytes
+    assert _other_files(tmp_path, file_path.name) == []
+    assert any(
+        record.levelno == logging.ERROR and "monaco" in record.message.lower()
+        for record in caplog.records
+    )
+
+
+def test_delete_lap_record_corrupt_file_returns_false_and_leaves_file_untouched(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setattr(slr, "TRACK_TIMES_DIR", str(tmp_path))
+    file_path = _track_file(tmp_path)
+    file_path.write_text("{not json", encoding="utf-8")
+    original_bytes = file_path.read_bytes()
+
+    result = slr.delete_lap_record(TRACK, "Max", "1:12.000", "2024-01-01T00:00:00")
+
+    assert result is False
+    assert file_path.read_bytes() == original_bytes
+    assert _other_files(tmp_path, file_path.name) == []
+
+
+def test_save_lap_record_creates_file_when_missing(tmp_path, monkeypatch):
+    monkeypatch.setattr(slr, "TRACK_TIMES_DIR", str(tmp_path))
+    file_path = _track_file(tmp_path)
+    assert not file_path.exists()
+
+    slr.save_lap_record(TRACK, "Lando", "McLaren", "1:11.500", True, 310.0)
+
+    records = slr.load_track_records(TRACK)
+    assert len(records) == 1
+    assert records[0]["driver"] == "Lando"
+
+
+def test_load_track_records_propagates_os_error_other_than_missing(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setattr(slr, "TRACK_TIMES_DIR", str(tmp_path))
+    slr.write_track_records(TRACK, [{"driver": "a"}])
+
+    def _fake_open(*args, **kwargs):
+        raise PermissionError("denied")
+
+    monkeypatch.setattr(slr, "open", _fake_open, raising=False)
+
+    with pytest.raises(PermissionError):
+        slr.load_track_records(TRACK)
+
+
+def test_save_lap_record_does_not_write_when_load_raises_os_error(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setattr(slr, "TRACK_TIMES_DIR", str(tmp_path))
+    slr.write_track_records(TRACK, [{"driver": "a"}])
+    file_path = _track_file(tmp_path)
+    original_bytes = file_path.read_bytes()
+
+    def _fake_open(*args, **kwargs):
+        raise PermissionError("denied")
+
+    monkeypatch.setattr(slr, "open", _fake_open, raising=False)
+
+    slr.save_lap_record(TRACK, "Max", "Red Bull", "1:12.000", True, 300.0)
+
+    assert file_path.read_bytes() == original_bytes
