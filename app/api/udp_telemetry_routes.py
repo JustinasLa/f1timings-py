@@ -397,13 +397,12 @@ async def set_driver_alias(alias_input: DriverAliasInput):
     display_name = cleaned_display_name
 
     alias_key = _normalize_driver_name(telemetry_name)
-    if (
-        alias_key not in driver_name_aliases
-        and len(driver_name_aliases) >= 256
-    ):
-        raise HTTPException(status_code=400, detail="Too many aliases")
-
     if display_name:
+        if (
+            alias_key not in driver_name_aliases
+            and len(driver_name_aliases) >= 256
+        ):
+            raise HTTPException(status_code=400, detail="Too many aliases")
         driver_name_aliases[alias_key] = display_name
     else:
         driver_name_aliases.pop(alias_key, None)

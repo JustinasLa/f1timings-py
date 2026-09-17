@@ -83,3 +83,12 @@ def test_257th_distinct_alias_is_rejected():
 
     resp = _set_alias("car256", "Driver 256")
     assert resp.status_code == 400
+
+
+def test_clearing_unknown_alias_succeeds_when_map_is_full():
+    for i in range(256):
+        resp = _set_alias(f"car{i}", f"Driver {i}")
+        assert resp.status_code == 200
+
+    resp = _set_alias("car256", "")
+    assert resp.status_code == 200
