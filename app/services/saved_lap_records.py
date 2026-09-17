@@ -18,8 +18,12 @@ logger = logging.getLogger(__name__)
 TRACK_TIMES_DIR = "track_times"
 
 # Guards the read-modify-write of a track's file so the telemetry thread's
-# auto-save and a delete request from the API cannot clobber each other.
-_records_lock = threading.Lock()
+# auto-save and a delete request from the API cannot clobber each other. It is
+# re-entrant because load_track_records takes it too and the writers call that
+# while already holding it. Reads take it so a reader can never hold the file
+# open across a writer's os.replace, which fails with PermissionError on
+# Windows when the target is open.
+_records_lock = threading.RLock()
 
 
 def make_safe_file_name(track_name):
@@ -56,22 +60,20 @@ def get_track_file_path(track_name):
 def load_track_records(track_name):
     """Reads all saved lap times for a track.
 
-    Returns a list of records. If the file does not exist yet, or cannot be
-    read, an empty list is returned.
+    Returns a list of records. If the file does not exist yet, an empty list is
+    returned.
+
+    Raises OSError (other than FileNotFoundError) or ValueError when the file
+    does exist but cannot be read or parsed. Callers that then write the list
+    back MUST NOT treat that as "no records", or they would overwrite a file
+    whose contents we simply failed to read.
     """
     file_path = get_track_file_path(track_name)
 
-    if not os.path.exists(file_path):
-        return []
-
     try:
-        json_file = open(file_path, "r", encoding="utf-8")
-        try:
+        with _records_lock, open(file_path, "r", encoding="utf-8") as json_file:
             data = json.load(json_file)
-        finally:
-            json_file.close()
-    except (OSError, ValueError) as error:
-        logger.warning(f"Could not read lap times for '{track_name}': {error}")
+    except FileNotFoundError:
         return []
 
     # The file stores an object that has a "lap_times" list inside it. Guard
@@ -81,7 +83,8 @@ def load_track_records(track_name):
         lap_times = data["lap_times"]
         if isinstance(lap_times, list):
             return lap_times
-    return []
+        raise ValueError(f"track {track_name!r} file has 'lap_times' but it is not a list")
+    raise ValueError(f"track {track_name!r} file has no 'lap_times' list")
 
 
 def write_track_records(track_name, lap_times):
@@ -165,7 +168,15 @@ def save_lap_record(
     # Read-modify-write under the lock so a concurrent delete (or another save)
     # cannot overwrite this change.
     with _records_lock:
-        lap_times = load_track_records(track_name)
+        try:
+            lap_times = load_track_records(track_name)
+        except (OSError, ValueError) as error:
+            logger.error(
+                f"Not saving lap for '{driver_name}': could not read existing lap "
+                f"times for track '{track_name}', refusing to overwrite them: {error}"
+            )
+            return
+
         lap_times.append(new_record)
         if write_track_records(track_name, lap_times):
             logger.debug(
@@ -179,10 +190,18 @@ def delete_lap_record(track_name, driver_name, time, recorded_at):
     A lap is identified by the driver who set it, its time string and its
     recorded_at timestamp. Only the FIRST record matching all three is removed,
     so deleting one lap never accidentally removes a duplicate. Returns True when
-    a record was removed, False when nothing matched.
+    a record was removed, False when nothing matched or the track's existing
+    records could not be read (in which case the file is left untouched).
     """
     with _records_lock:
-        lap_times = load_track_records(track_name)
+        try:
+            lap_times = load_track_records(track_name)
+        except (OSError, ValueError) as error:
+            logger.error(
+                f"Not deleting lap for '{driver_name}': could not read existing lap "
+                f"times for track '{track_name}', refusing to overwrite them: {error}"
+            )
+            return False
 
         kept_records = []
         removed = False
