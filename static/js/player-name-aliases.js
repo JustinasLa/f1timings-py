@@ -12,6 +12,7 @@ async function loadDriverAliases() {
 function updateDriverAliasPanel(liveDrivers) {
   const list = document.getElementById("driverAliasList");
   if (!list) return;
+  bindDriverAliasClicks(list);
 
   if (list.querySelector(".driver-alias-input:focus")) return;
 
@@ -44,10 +45,25 @@ function updateDriverAliasPanel(liveDrivers) {
         <span class="driver-alias-dot" style="background:${color}"></span>
         <span class="driver-alias-raw">${escapeHtml(item.telemetryName)}</span>
         <input class="driver-alias-input" data-telemetry-name="${escapeAttr(item.telemetryName)}" value="${escapeAttr(item.displayName)}" placeholder="Player name">
-        <button class="driver-alias-save" onmousedown="event.preventDefault()" onclick="saveDriverAlias('${escapeJs(item.telemetryName)}')">Save</button>
+        <button class="driver-alias-save" data-telemetry-name="${escapeAttr(item.telemetryName)}">Save</button>
       </div>
     `;
   }).join('');
+}
+
+/* One delegated handler for the Save buttons. The panel is re-rendered with
+   innerHTML on every update, so the listener lives on the list and is bound
+   once. mousedown is prevented so clicking Save does not blur the input first. */
+function bindDriverAliasClicks(list) {
+  if (list.dataset.clicksBound === '1') return;
+  list.dataset.clicksBound = '1';
+  list.addEventListener('mousedown', (event) => {
+    if (event.target.closest('.driver-alias-save')) event.preventDefault();
+  });
+  list.addEventListener('click', (event) => {
+    const button = event.target.closest('.driver-alias-save');
+    if (button) saveDriverAlias(button.dataset.telemetryName);
+  });
 }
 
 async function saveDriverAlias(telemetryName) {
