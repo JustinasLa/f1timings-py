@@ -171,7 +171,7 @@ The server listens on `0.0.0.0:8080` by default, or `0.0.0.0:8000` if using uvic
 
 ## Configuration
 
-- `CORS_ORIGINS` — comma-separated list of allowed cross-origin request origins (e.g. `http://localhost:5173,http://example.com`). Unset or empty by default, which disables CORS entirely since the dashboard is served by this same app.
+- `CORS_ORIGINS` — comma-separated list of allowed cross-origin request origins (e.g. `http://localhost:5173,http://example.com`). Unset or empty by default, which disables CORS entirely since the dashboard is served by this same app. Credentials are allowed for listed origins. Using `*` disables credentials (browsers reject `Access-Control-Allow-Origin: *` with credentials) and logs a warning. The `null` origin is ignored.
 
 ## License
 

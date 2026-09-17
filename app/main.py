@@ -62,6 +62,9 @@ cors_origins = [
     for origin in os.getenv("CORS_ORIGINS", "").split(",")
     if origin.strip()
 ]
+if any(origin.lower() == "null" for origin in cors_origins):
+    logger.warning("Ignoring 'null' CORS origin")
+    cors_origins = [origin for origin in cors_origins if origin.lower() != "null"]
 if cors_origins:
     allow_credentials = True
     if "*" in cors_origins:
@@ -74,6 +77,7 @@ if cors_origins:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    logger.info("CORS enabled for origins: %s", cors_origins)
 
 
 # -- WebSocket Connection Management ---

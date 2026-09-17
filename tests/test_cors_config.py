@@ -67,3 +67,21 @@ def test_wildcard_origin_disables_credentials_and_warns(reload_main, caplog):
     assert any(
         "wildcard" in record.message.lower() for record in caplog.records
     )
+
+
+def test_null_origin_is_ignored_and_warns(reload_main, caplog):
+    with caplog.at_level(logging.WARNING, logger="app.main"):
+        mod = reload_main("null, http://a.example")
+
+    client = TestClient(mod.app)
+
+    null_resp = client.get("/api/drivers", headers={"Origin": "null"})
+    assert "access-control-allow-origin" not in null_resp.headers
+
+    allowed_resp = client.get("/api/drivers", headers={"Origin": "http://a.example"})
+    assert allowed_resp.headers.get("access-control-allow-origin") == "http://a.example"
+
+    assert any(
+        "ignoring 'null' cors origin" in record.message.lower()
+        for record in caplog.records
+    )
