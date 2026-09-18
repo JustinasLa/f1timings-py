@@ -88,8 +88,9 @@ async def websocket_endpoint(websocket: WebSocket):
         while True:
             await websocket.receive_text()
     except WebSocketDisconnect:
-        manager.disconnect(websocket)
         logger.info(f"Client disconnected")
+    finally:
+        manager.disconnect(websocket)
 
 
 # --- Custom Exception Handlers ---
