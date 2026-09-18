@@ -525,12 +525,11 @@ def _maybe_auto_set_track(track_id):
         # We have no files for this track, so leave the current selection alone.
         return
 
-    # Remember it even before applying, so we don't retry every packet while the
-    # event loop is briefly unavailable.
-    _last_auto_set_track_id = track_id
-
     if _main_event_loop is None:
         return
+
+    # Only remember it once actually submitted, so a track seen while the loop is unavailable is retried.
+    _last_auto_set_track_id = track_id
 
     # set_track is async and lives on the main event loop; the listener runs in a
     # plain thread, so hand the call across with run_coroutine_threadsafe (same
