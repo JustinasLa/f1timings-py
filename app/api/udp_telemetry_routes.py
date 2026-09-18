@@ -463,10 +463,18 @@ def set_main_event_loop(loop):
 
 def _submit_to_main_loop(coro, what: str):
     """Fire-and-forget a coroutine on the main loop; log if it raises."""
-    future = asyncio.run_coroutine_threadsafe(coro, _main_event_loop)
+    try:
+        future = asyncio.run_coroutine_threadsafe(coro, _main_event_loop)
+    except RuntimeError:
+        coro.close()
+        logger.warning("%s dropped: main loop unavailable", what)
+        return None
 
     def _log_failure(f):
-        if not f.cancelled() and f.exception() is not None:
+        if f.cancelled():
+            logger.warning("%s was cancelled", what)
+            return
+        if f.exception() is not None:
             logger.error("%s failed", what, exc_info=f.exception())
 
     future.add_done_callback(_log_failure)
@@ -529,7 +537,7 @@ def _maybe_auto_set_track(track_id):
     # pattern used for auto-saving laps).
     from app.services.lap_time_store import set_track
 
-    _submit_to_main_loop(set_track(track_name), "Auto track set")
+    _submit_to_main_loop(set_track(track_name), f"Auto track set to {track_name!r}")
     logger.debug(
         "Auto-detected track from telemetry: track_id %s -> '%s'",
         track_id,
