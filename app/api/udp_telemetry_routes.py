@@ -460,6 +460,26 @@ def set_main_event_loop(loop):
     global _main_event_loop
     _main_event_loop = loop
 
+
+def _submit_to_main_loop(coro, what: str):
+    """Fire-and-forget a coroutine on the main loop; log if it raises."""
+    try:
+        future = asyncio.run_coroutine_threadsafe(coro, _main_event_loop)
+    except RuntimeError:
+        coro.close()
+        logger.warning("%s dropped: main loop unavailable", what)
+        return None
+
+    def _log_failure(f):
+        if f.cancelled():
+            logger.warning("%s was cancelled", what)
+            return
+        if f.exception() is not None:
+            logger.error("%s failed", what, exc_info=f.exception())
+
+    future.add_done_callback(_log_failure)
+    return future
+
 # Performance tracking
 packets_processed_count = 0
 packets_filtered_count = 0
@@ -517,7 +537,7 @@ def _maybe_auto_set_track(track_id):
     # pattern used for auto-saving laps).
     from app.services.lap_time_store import set_track
 
-    asyncio.run_coroutine_threadsafe(set_track(track_name), _main_event_loop)
+    _submit_to_main_loop(set_track(track_name), f"Auto track set to {track_name!r}")
     logger.debug(
         "Auto-detected track from telemetry: track_id %s -> '%s'",
         track_id,
@@ -1304,9 +1324,9 @@ def telemetry_listener_worker(host: str, port: int, stop_event: threading.Event)
                                                     sector_2_ms=saved_s2,
                                                     sector_3_ms=saved_s3,
                                                 )
-                                                asyncio.run_coroutine_threadsafe(
+                                                _submit_to_main_loop(
                                                     add_or_update_lap_time(lap_input),
-                                                    _main_event_loop
+                                                    f"Auto-save lap for {lap_driver_name!r}",
                                                 )
                                                 # Remember this lap so the same one is not
                                                 # saved twice. Keep the list bounded by
