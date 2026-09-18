@@ -1,6 +1,9 @@
 import asyncio
+import logging
 
 from fastapi import WebSocket
+
+logger = logging.getLogger(__name__)
 
 
 class ConnectionManager:
@@ -22,7 +25,7 @@ class ConnectionManager:
             await asyncio.wait_for(connection.send_json(message), timeout=1.0)
         except Exception:
             self.disconnect(connection)
-            print(f"Disconnected from {connection.client}")
+            logger.warning("Dropping websocket client %s: send failed", connection.client)
 
     async def broadcast(self, message: dict):
         connections = self.active_connections.copy()
