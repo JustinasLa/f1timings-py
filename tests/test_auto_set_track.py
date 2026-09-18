@@ -18,7 +18,7 @@ def reset_state(monkeypatch):
     def fake_submit(coro, what):
         coro.close()  # avoid "coroutine was never awaited" warnings
         submitted.append(what)
-        return None
+        return object()  # Return non-None sentinel to indicate success
 
     monkeypatch.setattr(udp_telemetry_routes, "_submit_to_main_loop", fake_submit)
 
@@ -73,4 +73,23 @@ def test_unknown_track_id_never_submits_or_remembers(reset_state):
     _maybe_auto_set_track(unknown_track_id)
 
     assert submitted == []
+    assert udp_telemetry_routes._last_auto_set_track_id is None
+
+
+def test_submit_failure_does_not_remember_track(reset_state):
+    """When _submit_to_main_loop returns None (failure), the track must not be remembered."""
+    submitted = reset_state
+    set_main_event_loop(object())
+    track_id = next(iter(TRACK_ID_TO_NAME))
+
+    def fake_submit_fails(coro, what):
+        coro.close()
+        submitted.append(what)
+        return None  # Simulate submission failure
+
+    udp_telemetry_routes._submit_to_main_loop = fake_submit_fails
+
+    _maybe_auto_set_track(track_id)
+
+    assert len(submitted) == 1
     assert udp_telemetry_routes._last_auto_set_track_id is None
