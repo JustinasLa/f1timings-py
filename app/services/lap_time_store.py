@@ -142,6 +142,12 @@ async def add_or_update_lap_time(lap_input: LapTimeInput) -> Dict[str, Driver]:
             new_lap.sector_2_ms,
             new_lap.sector_3_ms,
         )
+    else:
+        logger.warning(
+            "Lap %s for '%s' kept in memory only: no track set, nothing saved to disk",
+            new_lap.time,
+            driver_name,
+        )
 
     if websocket_manager and broadcast_message:
         await websocket_manager.broadcast(broadcast_message)
