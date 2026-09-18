@@ -2,8 +2,6 @@ import logging
 from typing import Dict, List, Optional
 from pydantic import BaseModel, Field, field_validator, computed_field
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # --- Internal Data Structures ---
