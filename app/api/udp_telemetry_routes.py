@@ -525,10 +525,6 @@ def _maybe_auto_set_track(track_id):
         # We have no files for this track, so leave the current selection alone.
         return
 
-    # Remember it even before applying, so we don't retry every packet while the
-    # event loop is briefly unavailable.
-    _last_auto_set_track_id = track_id
-
     if _main_event_loop is None:
         return
 
@@ -537,7 +533,11 @@ def _maybe_auto_set_track(track_id):
     # pattern used for auto-saving laps).
     from app.services.lap_time_store import set_track
 
-    _submit_to_main_loop(set_track(track_name), f"Auto track set to {track_name!r}")
+    future = _submit_to_main_loop(set_track(track_name), f"Auto track set to {track_name!r}")
+    if future is None:
+        return
+    # Only remember it once actually submitted, so a track seen while the loop is unavailable is retried.
+    _last_auto_set_track_id = track_id
     logger.debug(
         "Auto-detected track from telemetry: track_id %s -> '%s'",
         track_id,
