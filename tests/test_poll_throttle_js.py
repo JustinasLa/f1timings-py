@@ -15,6 +15,7 @@ setInterval = (fn) => { tick = fn; return 1; };
 clearInterval = () => {};
 Date.now = () => now;
 console.error = () => {};
+document = { getElementById: () => ({ hidden: true }) };
 updateDriverAliasPanel = drawDriversOnTrack = redrawCompleteTrack = updateTrackConditions = () => {};
 updateLeaderboard = updateFastestLapPill = updatePoleLapCard = () => {};
 hasLivePosition = () => false;
