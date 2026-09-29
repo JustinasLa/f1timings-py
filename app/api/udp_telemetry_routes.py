@@ -1,5 +1,6 @@
 import asyncio
 import ctypes
+import json
 import os
 import socket
 import threading
@@ -12,6 +13,7 @@ from dotenv import load_dotenv
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from app.models.data_models import DriverResponse, LapTime
+from app.services.saved_lap_records import write_json_atomic
 
 load_dotenv()
 
@@ -324,17 +326,30 @@ async def set_driver_alias(alias_input: DriverAliasInput):
     display_name = cleaned_display_name
 
     alias_key = _normalize_driver_name(telemetry_name)
-    if display_name:
-        if (
-            alias_key not in driver_name_aliases
-            and len(driver_name_aliases) >= 256
-        ):
-            raise HTTPException(status_code=400, detail="Too many aliases")
-        driver_name_aliases[alias_key] = display_name
-    else:
-        driver_name_aliases.pop(alias_key, None)
+    return await asyncio.to_thread(_update_driver_alias, alias_key, display_name)
 
-    return dict(driver_name_aliases)
+
+def _update_driver_alias(alias_key: str, display_name: str) -> Dict[str, str]:
+    with _driver_aliases_lock:
+        updated = dict(driver_name_aliases)
+        if display_name:
+            if alias_key not in updated and len(updated) >= 256:
+                raise HTTPException(status_code=400, detail="Too many aliases")
+            updated[alias_key] = display_name
+        else:
+            updated.pop(alias_key, None)
+
+        try:
+            write_json_atomic(DRIVER_ALIASES_FILE, updated)
+        except (OSError, TypeError, ValueError) as error:
+            logger.warning("Could not write %s: %s", DRIVER_ALIASES_FILE, error)
+            raise HTTPException(status_code=500, detail="Could not save aliases")
+
+        if display_name:
+            driver_name_aliases[alias_key] = display_name
+        else:
+            driver_name_aliases.pop(alias_key, None)
+        return updated
 
 
 try:
@@ -366,7 +381,29 @@ enhanced_session_data_store: dict = {}
 lap_data_store: list = []
 telemetry_sources: Dict[str, Dict[str, Any]] = {}
 telemetry_sources_lock = threading.Lock()
-driver_name_aliases: Dict[str, str] = {}
+DRIVER_ALIASES_FILE = "driver_aliases.json"
+_driver_aliases_lock = threading.Lock()
+
+
+def _load_driver_aliases() -> Dict[str, str]:
+    try:
+        with open(DRIVER_ALIASES_FILE, "r", encoding="utf-8") as json_file:
+            data = json.load(json_file)
+    except FileNotFoundError:
+        return {}
+    except (OSError, ValueError) as error:
+        logger.warning("Ignoring unreadable %s: %s", DRIVER_ALIASES_FILE, error)
+        return {}
+
+    if not isinstance(data, dict) or not all(
+        isinstance(k, str) and isinstance(v, str) for k, v in data.items()
+    ):
+        logger.warning("Ignoring %s: not a string-to-string object", DRIVER_ALIASES_FILE)
+        return {}
+    return data
+
+
+driver_name_aliases: Dict[str, str] = _load_driver_aliases()
 
 IGNORED_AUTOSAVE_DRIVER_NAMES = {"personal best"}
 _main_event_loop = None

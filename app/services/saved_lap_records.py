@@ -51,17 +51,7 @@ def load_track_records(track_name):
     raise ValueError(f"track {track_name!r} file has no 'lap_times' list")
 
 
-def write_track_records(track_name, lap_times):
-    if not os.path.exists(TRACK_TIMES_DIR):
-        os.makedirs(TRACK_TIMES_DIR)
-
-    file_content = {
-        "track": track_name,
-        "lap_times": lap_times,
-    }
-
-    file_path = get_track_file_path(track_name)
-
+def write_json_atomic(file_path, file_content):
     tmp_path = None
     try:
         json_text = json.dumps(file_content, indent=2)
@@ -83,13 +73,30 @@ def write_track_records(track_name, lap_times):
         os.chmod(tmp_path, 0o644)
 
         os.replace(tmp_path, file_path)
-        return True
-    except (OSError, TypeError, ValueError) as error:
+    except (OSError, TypeError, ValueError):
         if tmp_path and os.path.exists(tmp_path):
             try:
                 os.remove(tmp_path)
             except OSError:
                 pass
+        raise
+
+
+def write_track_records(track_name, lap_times):
+    if not os.path.exists(TRACK_TIMES_DIR):
+        os.makedirs(TRACK_TIMES_DIR)
+
+    file_content = {
+        "track": track_name,
+        "lap_times": lap_times,
+    }
+
+    file_path = get_track_file_path(track_name)
+
+    try:
+        write_json_atomic(file_path, file_content)
+        return True
+    except (OSError, TypeError, ValueError) as error:
         logger.warning(f"Could not write lap times for '{track_name}': {error}")
         return False
 
