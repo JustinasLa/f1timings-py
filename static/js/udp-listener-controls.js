@@ -8,13 +8,13 @@ function initializeTelemetryControls() {
 
   if (!startButton || !stopButton || !portInput) return;
 
-  const savedPort = localStorage.getItem("udpTelemetryPort");
+  const savedPort = readStoredValue("udpTelemetryPort");
   if (savedPort) portInput.value = savedPort;
 
   startButton.addEventListener("click", startUdpTelemetry);
   stopButton.addEventListener("click", stopUdpTelemetry);
   portInput.addEventListener("change", () => {
-    localStorage.setItem("udpTelemetryPort", getUdpPort());
+    writeStoredValue("udpTelemetryPort", getUdpPort());
   });
 
   refreshTelemetryStatus();
@@ -48,7 +48,7 @@ async function refreshTelemetryStatus(force = false) {
 
 async function startUdpTelemetry() {
   const port = getUdpPort();
-  localStorage.setItem("udpTelemetryPort", port);
+  writeStoredValue("udpTelemetryPort", port);
   setTelemetryPending("Starting");
 
   try {
@@ -131,6 +131,6 @@ function updateTelemetryControls(status) {
 
   if (status?.port) {
     portInput.value = status.port;
-    localStorage.setItem("udpTelemetryPort", String(status.port));
+    writeStoredValue("udpTelemetryPort", String(status.port));
   }
 }
