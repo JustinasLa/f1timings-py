@@ -1,14 +1,25 @@
 document.addEventListener("DOMContentLoaded", () => {
-  canvas = document.getElementById("trackCanvas");
-  if (canvas) {
-    ctx = canvas.getContext("2d");
+  const steps = [
+    () => {
+      canvas = document.getElementById("trackCanvas");
+      if (canvas) {
+        ctx = canvas.getContext("2d");
+      }
+    },
+    () => initializeColumnSettings(),
+    () => initializeLayoutDivider(),
+    () => initializeWebSocket(),
+    () => loadCurrentTrack(),
+    () => loadTrackSelectOptions(),
+    () => loadDriverAliases(),
+    () => initializeTelemetryControls(),
+    () => startDataFetching()
+  ];
+  for (const step of steps) {
+    try {
+      step();
+    } catch (error) {
+      console.error("Dashboard init step failed:", error);
+    }
   }
-  initializeColumnSettings();
-  initializeLayoutDivider();
-  initializeWebSocket();
-  loadCurrentTrack();
-  loadTrackSelectOptions();
-  loadDriverAliases();
-  initializeTelemetryControls();
-  startDataFetching();
 });
