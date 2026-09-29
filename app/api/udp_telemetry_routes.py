@@ -460,6 +460,7 @@ def _get_source_state(source_id: str) -> Dict[str, Any]:
                 "live_sector1_ms": [0] * 22,
                 "live_sector2_ms": [0] * 22,
                 "live_lap_invalid_flag": [False] * 22,
+                "last_current_lap_ms": [0] * 22,
                 "last_sector_progress_time": [0.0] * 22,
                 "live_display_owner": [None] * 22,
                 "raw_packets": {},
@@ -1015,6 +1016,21 @@ def telemetry_listener_worker(host: str, port: int, stop_event: threading.Event)
                                     last_sector_progress_time[i] = 0.0
                                 live_display_owner[i] = current_display_name
 
+                                is_new_completed_lap = (
+                                    last_lap_ms > 0
+                                    and last_lap_ms != last_lap_times[i]
+                                )
+                                current_lap_ms = lap_data_store[i].get("currentLapTimeInMS", 0)
+                                if (
+                                    current_lap_ms < source_state["last_current_lap_ms"][i]
+                                    and not is_new_completed_lap
+                                ):
+                                    source_state["live_lap_invalid_flag"][i] = False
+                                    live_sector1_ms[i] = 0
+                                    live_sector2_ms[i] = 0
+                                    lap_top_speeds[i] = 0.0
+                                source_state["last_current_lap_ms"][i] = current_lap_ms
+
                                 current_s1 = lap_data_store[i].get("sector1TimeMS", 0)
                                 current_s2 = lap_data_store[i].get("sector2TimeMS", 0)
                                 if current_s1 > 0 and live_sector1_ms[i] == 0:
@@ -1030,10 +1046,6 @@ def telemetry_listener_worker(host: str, port: int, stop_event: threading.Event)
                                     lap_tracking_started[i] = True
                                     lap_owner_names[i] = current_display_name
                                 else:
-                                    is_new_completed_lap = (
-                                        last_lap_ms > 0
-                                        and last_lap_ms != last_lap_times[i]
-                                    )
                                     if is_new_completed_lap:
                                         last_sector_progress_time[i] = now_time
 
