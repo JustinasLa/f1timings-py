@@ -84,7 +84,6 @@ class TrackService:
             "canadian": "canada",
             "china": "china",
             "chinese": "china",
-            "germany": "hungary",
             "hungary": "hungary",
             "hungarian": "hungary",
             "italy": "monza",
