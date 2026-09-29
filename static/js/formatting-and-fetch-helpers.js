@@ -20,8 +20,8 @@ async function fetchJsonWithTimeout(url, timeoutMs, options = {}) {
 
 function hasLivePosition(driver) {
   return driver
-    && Number.isFinite(Number(driver.world_x))
-    && Number.isFinite(Number(driver.world_z));
+    && Number.isFinite(driver.world_x)
+    && Number.isFinite(driver.world_z);
 }
 function parseTimeToSeconds(t) {
   if (!t) return Infinity;

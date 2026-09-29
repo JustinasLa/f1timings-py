@@ -66,3 +66,32 @@ def test_escape_js_is_not_defined():
         "console.log(typeof escapeJs);",
     )
     assert output == "undefined"
+
+
+@pytest.mark.parametrize(
+    "value_js, expected",
+    [
+        ("null", False),
+        ("undefined", False),
+        ("''", False),
+        ("NaN", False),
+        ("'abc'", False),
+        ("0", True),
+        ("-1234.5", True),
+        ("987", True),
+    ],
+)
+def test_has_live_position_only_accepts_finite_numbers(value_js, expected):
+    output = _run_node(
+        _source(),
+        f"const v = {value_js}; console.log(JSON.stringify([!!hasLivePosition({{world_x: v, world_z: v}}), !!hasLivePosition({{world_x: 1, world_z: v}}), !!hasLivePosition({{world_x: v, world_z: 1}})]));",
+    )
+    assert json.loads(output) == [expected] * 3
+
+
+def test_has_live_position_rejects_missing_driver():
+    output = _run_node(
+        _source(),
+        "console.log(JSON.stringify([!!hasLivePosition(null), !!hasLivePosition(undefined), !!hasLivePosition({})]));",
+    )
+    assert json.loads(output) == [False, False, False]
