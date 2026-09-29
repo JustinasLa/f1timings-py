@@ -79,10 +79,6 @@ TRACK_ID_TO_NAME = {
     17: "austria",
     19: "mexico",
     20: "azerbaijan",
-    21: "bahrain",
-    22: "great_britain",
-    23: "texas",
-    24: "japan",
     26: "netherlands",
     27: "imola",
     28: "portugal",
@@ -91,6 +87,8 @@ TRACK_ID_TO_NAME = {
     31: "las_vegas",
     32: "qatar",
 }
+
+SHORT_LAYOUT_TRACK_IDS = {21, 22, 23, 24}
 
 _last_auto_set_track_id = None
 
@@ -636,6 +634,16 @@ def telemetry_listener_worker(host: str, port: int, stop_event: threading.Event)
                             f"Processing SessionData (ID 1). Track ID: {packet.track_id if hasattr(packet, 'track_id') else 'N/A'}"
                         )
 
+                        if (
+                            packet.track_id in SHORT_LAYOUT_TRACK_IDS
+                            and session_data_store.get("trackId") != packet.track_id
+                        ):
+                            logger.warning(
+                                "Short layout track_id %s from %s: laps will not be auto-saved",
+                                packet.track_id,
+                                source_id,
+                            )
+
                         session_data_store.update(
                             {
                                 "trackId": packet.track_id,
@@ -1073,7 +1081,13 @@ def telemetry_listener_worker(host: str, port: int, stop_event: threading.Event)
                                         normalized_telemetry_name = _normalize_driver_name(telemetry_name)
                                         normalized_driver_name = _normalize_driver_name(lap_driver_name)
                                         lap_signature = (normalized_driver_name, last_lap_ms, finished_invalid)
-                                        if (
+                                        if source_state["session"].get("trackId") in SHORT_LAYOUT_TRACK_IDS:
+                                            logger.debug(
+                                                "Skipping auto-save of short layout lap: %s - %s",
+                                                lap_driver_name,
+                                                ms_to_laptime_str(last_lap_ms),
+                                            )
+                                        elif (
                                             normalized_telemetry_name not in IGNORED_AUTOSAVE_DRIVER_NAMES
                                             and lap_signature not in saved_signatures
                                         ):

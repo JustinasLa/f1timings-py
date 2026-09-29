@@ -198,3 +198,47 @@ def test_lap_falls_back_to_displayed_track_when_source_track_id_unmapped(
     lap_messages = [m for m in ws.messages if m["type"] == "laptime_update"]
     assert len(lap_messages) == 1
     assert lap_messages[0]["data"]["track"] == "spain"
+
+
+@pytest.mark.parametrize("short_track_id", [21, 22, 23, 24])
+def test_short_layout_lap_not_saved_and_display_track_unchanged(
+    worker_env, monkeypatch, caplog, short_track_id
+):
+    saves, ws = worker_env
+    app_data.track_name = "spain"
+
+    with caplog.at_level("WARNING", logger=udp_telemetry_routes.logger.name):
+        _run_worker(
+            monkeypatch,
+            [
+                _session_packet(short_track_id),
+                _session_packet(short_track_id),
+                _participants_packet("Hamilton"),
+                _lap_packet(0),
+                _lap_packet(60123),
+                _lap_packet(61456),
+            ],
+        )
+
+    assert saves == []
+    assert app_data.track_name == "spain"
+    assert [m for m in ws.messages if m["type"] == "laptime_update"] == []
+    assert len([r for r in caplog.records if r.levelname == "WARNING"]) == 1
+
+
+def test_full_circuit_lap_still_saved_after_short_layout_id_removed(worker_env, monkeypatch):
+    saves, ws = worker_env
+    app_data.track_name = "spain"
+
+    _run_worker(
+        monkeypatch,
+        [
+            _session_packet(3),
+            _participants_packet("Hamilton"),
+            _lap_packet(0),
+            _lap_packet(95123),
+        ],
+    )
+
+    assert saves == [("bahrain", "Hamilton")]
+    assert app_data.track_name == "bahrain"
