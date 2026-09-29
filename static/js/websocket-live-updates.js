@@ -1,7 +1,10 @@
 function initializeWebSocket() {
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
   socket = new WebSocket(`${proto}//${location.host}/ws`);
-  socket.onopen = () => console.log('WS connected');
+  socket.onopen = () => {
+    console.log('WS connected');
+    loadDisplayData();
+  };
   socket.onmessage = (e) => {
     try {
       const msg = JSON.parse(e.data);

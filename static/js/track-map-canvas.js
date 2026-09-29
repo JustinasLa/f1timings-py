@@ -8,6 +8,7 @@ async function loadCurrentTrack() {
         updateTrackUI();
         updateTrackSelectValue();
         loadTrackVisualization(currentTrack);
+        loadDisplayData();
       }
     }
   } catch (e) { console.error('Error loading track:', e); }

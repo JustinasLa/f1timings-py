@@ -1,26 +1,40 @@
 let displayDataInFlight = false;
+let displayDataPending = false;
+let liveDriversInFlight = false;
+let lastRecordsFetchAt = 0;
 
 function startDataFetching() {
   if (fetchDataInterval) clearInterval(fetchDataInterval);
   loadDisplayData();
-  fetchDataInterval = setInterval(loadDisplayData, FETCH_INTERVAL_MS);
+  loadLiveDriverPositions();
+  fetchDataInterval = setInterval(pollDisplayData, FETCH_INTERVAL_MS);
+}
+
+function pollDisplayData() {
+  loadLiveDriverPositions();
+  updateTrackConditions();
+  if (Date.now() - lastRecordsFetchAt >= RECORDS_REFRESH_INTERVAL_MS) loadDisplayData();
 }
 
 async function loadDisplayData() {
-  if (displayDataInFlight) return;
+  if (displayDataInFlight) {
+    displayDataPending = true;
+    return;
+  }
   displayDataInFlight = true;
+  lastRecordsFetchAt = Date.now();
   try {
     await refreshDisplayData();
   } finally {
     displayDataInFlight = false;
   }
+  if (displayDataPending) {
+    displayDataPending = false;
+    loadDisplayData();
+  }
 }
 
 async function refreshDisplayData() {
-  loadLiveDriverPositions();
-
-  updateTrackConditions();
-
   if (!currentTrack) {
     updateLeaderboard({});
     updateFastestLapPill({});
@@ -40,6 +54,8 @@ async function refreshDisplayData() {
 }
 
 async function loadLiveDriverPositions() {
+  if (liveDriversInFlight) return;
+  liveDriversInFlight = true;
   try {
     const liveDrivers = await fetchJsonWithTimeout("/api/drivers/live", 1500);
     latestLiveDrivers = liveDrivers;
@@ -54,5 +70,7 @@ async function loadLiveDriverPositions() {
     }
   } catch {
     if (trackData) redrawCompleteTrack();
+  } finally {
+    liveDriversInFlight = false;
   }
 }

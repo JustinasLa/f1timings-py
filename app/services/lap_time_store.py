@@ -116,7 +116,8 @@ async def add_or_update_lap_time(
         }
 
     if current_track_name:
-        save_lap_record(
+        await asyncio.to_thread(
+            save_lap_record,
             current_track_name,
             driver_name,
             lap_input.team,
