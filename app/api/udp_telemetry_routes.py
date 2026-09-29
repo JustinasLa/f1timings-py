@@ -342,7 +342,7 @@ except ImportError:
     F1_TELEMETRY_AVAILABLE = False
     print("WARNING: f1_24_telemetry library not found. UDP Telemetry will not work.")
     print(
-        "Please install it, possibly using: pip install git+https://github.com/xavierdubuc/f1-24-telemetry.git"
+        "Please install it, possibly using: pip install \"f1-24-telemetry @ git+https://github.com/xavierdubuc/f1-24-telemetry.git@dc3e2991a0f01c82c39b000cb3ebf2697557b321\""
     )
 
 listener_thread: Optional[threading.Thread] = None
