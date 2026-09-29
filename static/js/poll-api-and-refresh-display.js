@@ -2,6 +2,7 @@ let displayDataInFlight = false;
 let displayDataPending = false;
 let liveDriversInFlight = false;
 let lastRecordsFetchAt = 0;
+let lastLivePollOkAt = Date.now();
 
 function startDataFetching() {
   if (fetchDataInterval) clearInterval(fetchDataInterval);
@@ -10,7 +11,13 @@ function startDataFetching() {
   fetchDataInterval = setInterval(pollDisplayData, FETCH_INTERVAL_MS);
 }
 
+function updateConnectionBanner() {
+  const banner = document.getElementById("connectionBanner");
+  if (banner) banner.hidden = Date.now() - lastLivePollOkAt <= CONNECTION_STALE_MS;
+}
+
 function pollDisplayData() {
+  updateConnectionBanner();
   loadLiveDriverPositions();
   updateTrackConditions();
   if (Date.now() - lastRecordsFetchAt >= RECORDS_REFRESH_INTERVAL_MS) loadDisplayData();
@@ -58,6 +65,7 @@ async function loadLiveDriverPositions() {
   liveDriversInFlight = true;
   try {
     const liveDrivers = await fetchJsonWithTimeout("/api/drivers/live", 1500);
+    lastLivePollOkAt = Date.now();
     latestLiveDrivers = liveDrivers;
     updateDriverAliasPanel(liveDrivers);
     const withPos = Object.entries(liveDrivers).filter(([, d]) =>

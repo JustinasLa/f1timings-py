@@ -4,10 +4,13 @@ async function loadCurrentTrack() {
     if (r.ok) {
       const data = await r.json();
       if (data.name) {
-        currentTrack = data.name.toLowerCase();
-        updateTrackUI();
-        updateTrackSelectValue();
-        loadTrackVisualization(currentTrack);
+        const track = data.name.toLowerCase();
+        if (track !== currentTrack) {
+          currentTrack = track;
+          updateTrackUI();
+          updateTrackSelectValue();
+          loadTrackVisualization(currentTrack);
+        }
         loadDisplayData();
       }
     }

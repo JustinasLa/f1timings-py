@@ -3,7 +3,7 @@ function initializeWebSocket() {
   socket = new WebSocket(`${proto}//${location.host}/ws`);
   socket.onopen = () => {
     console.log('WS connected');
-    loadDisplayData();
+    loadCurrentTrack();
   };
   socket.onmessage = (e) => {
     try {

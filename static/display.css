@@ -27,6 +27,20 @@ body {
   flex-direction: column;
 }
 
+.connection-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2000;
+  padding: 14px 20px;
+  background: #ffd60a;
+  color: #000;
+  font-size: 28px;
+  font-weight: 700;
+  text-align: center;
+}
+
 .session-header {
   background: var(--bg2);
   border-bottom: 1px solid var(--border);
