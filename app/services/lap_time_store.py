@@ -39,7 +39,9 @@ def set_websocket_manager(manager):
     print(f"WebSocket manager set: {manager}")
 
 
-async def add_or_update_lap_time(lap_input: LapTimeInput) -> Dict[str, Driver]:
+async def add_or_update_lap_time(
+    lap_input: LapTimeInput, track_name: Optional[str] = None
+) -> Dict[str, Driver]:
     global websocket_manager
 
     broadcast_message = None
@@ -88,6 +90,8 @@ async def add_or_update_lap_time(lap_input: LapTimeInput) -> Dict[str, Driver]:
 
         update_overall_fastest_lap(app_data.drivers)
 
+        current_track_name = track_name or app_data.track_name
+
         broadcast_message = {
             "type": "laptime_update",
             "action": "add" if is_new_driver else "update",
@@ -102,6 +106,7 @@ async def add_or_update_lap_time(lap_input: LapTimeInput) -> Dict[str, Driver]:
                 "sector_1_ms": new_lap.sector_1_ms,
                 "sector_2_ms": new_lap.sector_2_ms,
                 "sector_3_ms": new_lap.sector_3_ms,
+                "track": current_track_name,
             },
         }
 
@@ -109,8 +114,6 @@ async def add_or_update_lap_time(lap_input: LapTimeInput) -> Dict[str, Driver]:
             name: driver.model_copy(deep=True)
             for name, driver in app_data.drivers.items()
         }
-
-        current_track_name = app_data.track_name
 
     if current_track_name:
         save_lap_record(
