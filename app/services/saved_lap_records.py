@@ -162,7 +162,8 @@ def delete_lap_record(track_name, driver_name, time, recorded_at):
             kept_records.append(record)
 
         if removed:
-            write_track_records(track_name, kept_records)
+            if not write_track_records(track_name, kept_records):
+                raise OSError(f"could not write lap records for track {track_name!r}")
             logger.debug(
                 f"Deleted lap time for '{driver_name}' on track '{track_name}'."
             )

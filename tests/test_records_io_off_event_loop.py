@@ -84,3 +84,44 @@ def test_lap_save_waits_for_records_lock_without_blocking_event_loop(records_dir
 
     records = slr.load_track_records(TRACK)
     assert [(r["driver"], r["time"]) for r in records] == [("Lando", "1:11.500")]
+
+
+DELETE_BODY = {"track": TRACK, "driver": "Max", "time": "1:12.000", "recorded_at": "2024-01-01T00:00:00"}
+
+
+def test_delete_route_returns_500_and_keeps_record_when_write_fails(records_dir, monkeypatch):
+    record = {"driver": "Max", "time": "1:12.000", "recorded_at": "2024-01-01T00:00:00"}
+    slr.write_track_records(TRACK, [record])
+
+    def locked(*args, **kwargs):
+        raise PermissionError("file is locked")
+
+    monkeypatch.setattr(slr.os, "replace", locked)
+
+    resp = client.post("/api/track/records/delete", json=DELETE_BODY)
+
+    assert resp.status_code == 500
+    assert TRACK in resp.json()["detail"]
+    assert slr.load_track_records(TRACK) == [record]
+
+
+def test_delete_route_removes_record_and_returns_200(records_dir):
+    record = {"driver": "Max", "time": "1:12.000", "recorded_at": "2024-01-01T00:00:00"}
+    other = {"driver": "Lando", "time": "1:11.500", "recorded_at": "2024-01-02T00:00:00"}
+    slr.write_track_records(TRACK, [record, other])
+
+    resp = client.post("/api/track/records/delete", json=DELETE_BODY)
+
+    assert resp.status_code == 200
+    assert resp.json() == {"deleted": True, "track": TRACK}
+    assert slr.load_track_records(TRACK) == [other]
+
+
+def test_delete_route_returns_404_when_no_match(records_dir):
+    other = {"driver": "Lando", "time": "1:11.500", "recorded_at": "2024-01-02T00:00:00"}
+    slr.write_track_records(TRACK, [other])
+
+    resp = client.post("/api/track/records/delete", json=DELETE_BODY)
+
+    assert resp.status_code == 404
+    assert slr.load_track_records(TRACK) == [other]
