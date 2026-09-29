@@ -1,5 +1,3 @@
-/* Generic helpers: HTML escaping, fetch, and lap-time formatting. */
-
 function escapeHtml(str) {
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
@@ -40,7 +38,6 @@ function parseTimeToSeconds(t) {
   return parseFloat(t) || Infinity;
 }
 
-/* Format a number of seconds as m:ss.sss (for example 70.27 -> "1:10.270"). */
 function formatSeconds(s) {
   if (!isFinite(s)) return 'N/A';
   const m = Math.floor(s / 60);

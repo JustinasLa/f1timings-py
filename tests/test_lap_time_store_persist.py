@@ -10,8 +10,6 @@ from app.models.data_models import LapTimeInput
 
 @pytest.fixture
 def reset_state(monkeypatch):
-    """Reset in-memory driver/track state and stub out save_lap_record so no
-    files are written. Restores everything afterwards."""
     monkeypatch.setattr(app_data, "drivers", {})
     monkeypatch.setattr(app_data, "track_name", None)
 
@@ -28,8 +26,6 @@ def reset_state(monkeypatch):
 
 
 def test_no_track_set_keeps_lap_in_memory_and_warns(reset_state, caplog):
-    """With no track set, the lap is kept in app_data.drivers but never saved
-    to disk, and a warning is logged."""
     calls = reset_state
     lap_input = LapTimeInput(name="Hamilton", team="Mercedes", time="1:23.456")
 
@@ -48,8 +44,6 @@ def test_no_track_set_keeps_lap_in_memory_and_warns(reset_state, caplog):
 
 
 def test_track_set_saves_lap_and_logs_no_warning(reset_state, caplog):
-    """With a track set, save_lap_record is called once with the track and
-    driver name, and no 'kept in memory only' warning is logged."""
     calls = reset_state
     app_data.track_name = "Silverstone"
     lap_input = LapTimeInput(name="Verstappen", team="RedBull", time="1:22.123")

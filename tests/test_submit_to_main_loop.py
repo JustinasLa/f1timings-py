@@ -13,12 +13,6 @@ from app.api.udp_telemetry_routes import (
 
 @pytest.fixture
 def main_loop():
-    """Run a real asyncio event loop on a background thread.
-
-    ``_submit_to_main_loop`` uses ``asyncio.run_coroutine_threadsafe``, which
-    needs a loop that is actually running on another thread, and its
-    done-callback fires on that loop's thread too.
-    """
     loop = asyncio.new_event_loop()
     thread = threading.Thread(target=loop.run_forever, daemon=True)
     thread.start()
@@ -73,8 +67,6 @@ def test_no_error_logged_when_coroutine_succeeds(main_loop, caplog):
 
         assert future.result(timeout=2) == "ok"
 
-        # Give the done-callback a moment to run on the loop thread even
-        # though nothing should get logged.
         time.sleep(0.1)
 
     error_records = [r for r in caplog.records if r.levelno == logging.ERROR]

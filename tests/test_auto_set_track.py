@@ -10,15 +10,14 @@ from app.api.udp_telemetry_routes import (
 
 @pytest.fixture
 def reset_state(monkeypatch):
-    """Reset the auto-track-set globals and record calls to _submit_to_main_loop."""
     monkeypatch.setattr(udp_telemetry_routes, "_last_auto_set_track_id", None)
 
     submitted = []
 
     def fake_submit(coro, what):
-        coro.close()  # avoid "coroutine was never awaited" warnings
+        coro.close()
         submitted.append(what)
-        return object()  # Return non-None sentinel to indicate success
+        return object()
 
     monkeypatch.setattr(udp_telemetry_routes, "_submit_to_main_loop", fake_submit)
 
@@ -29,8 +28,6 @@ def reset_state(monkeypatch):
 
 
 def test_no_loop_does_not_remember_track(reset_state):
-    """When no main loop is set, calling with a known track id must not submit
-    anything and must not update _last_auto_set_track_id."""
     submitted = reset_state
     track_id = next(iter(TRACK_ID_TO_NAME))
 
@@ -77,7 +74,6 @@ def test_unknown_track_id_never_submits_or_remembers(reset_state):
 
 
 def test_submit_failure_does_not_remember_track(reset_state):
-    """When _submit_to_main_loop returns None (failure), the track must not be remembered."""
     submitted = reset_state
     set_main_event_loop(object())
     track_id = next(iter(TRACK_ID_TO_NAME))
@@ -85,7 +81,7 @@ def test_submit_failure_does_not_remember_track(reset_state):
     def fake_submit_fails(coro, what):
         coro.close()
         submitted.append(what)
-        return None  # Simulate submission failure
+        return None
 
     udp_telemetry_routes._submit_to_main_loop = fake_submit_fails
 

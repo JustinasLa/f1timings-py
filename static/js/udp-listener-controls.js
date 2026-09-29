@@ -1,5 +1,3 @@
-/* UDP listener controls in the display header. */
-
 let telemetryStatusInterval = null;
 let telemetryStatusPending = false;
 

@@ -27,7 +27,6 @@ body {
   flex-direction: column;
 }
 
-/* ── Session header ── */
 .session-header {
   background: var(--bg2);
   border-bottom: 1px solid var(--border);
@@ -175,40 +174,27 @@ body {
   max-width: 120px;
   object-fit: contain;
 }
-/* ── Main layout ── */
 .main-layout {
   display: grid;
-  /* Left pane | draggable divider | right pane. The left width is driven by the
-     --left-width variable so the divider can resize it (set by layout-divider.js
-     and saved between sessions); the right pane takes whatever is left. Both
-     panes use minmax(0, …) so they can shrink without overflowing. */
   grid-template-columns: minmax(0, var(--left-width, 1fr)) 6px minmax(0, 1fr);
   flex: 1;
   overflow: hidden;
   gap: 0;
-  /* Glide the divider when it auto-fits to a column toggle. The transition is
-     switched off during a manual drag (below) so the divider tracks the cursor
-     exactly instead of lagging behind it. */
   transition: grid-template-columns 0.18s ease;
 }
 body.layout-resizing .main-layout {
   transition: none;
 }
 
-/* ── Left: timing area ── */
 .timing-area {
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
-/* Draggable divider between the timing table and the track map. Drag it right to
-   shrink the map, left to enlarge it. */
 .layout-divider {
   background: var(--border);
   cursor: col-resize;
-  /* A wider invisible hit area around the thin visible line makes it easy to grab
-     without making the line itself look thick. */
   position: relative;
 }
 .layout-divider::after {
@@ -223,7 +209,6 @@ body.layout-resizing .main-layout {
 .layout-divider.dragging {
   background: var(--text-muted);
 }
-/* While dragging, stop the page selecting text and keep the resize cursor. */
 body.layout-resizing {
   cursor: col-resize;
   user-select: none;
@@ -255,7 +240,6 @@ body.layout-resizing {
   justify-content: space-between;
 }
 
-/* ── Leaderboard column settings (gear button + switches) ── */
 .column-settings {
   position: relative;
 }
@@ -298,7 +282,6 @@ body.layout-resizing {
   color: var(--text-muted);
   margin-bottom: 6px;
 }
-/* One switch row: label on the left, the switch on the right. */
 .column-toggle {
   display: flex;
   align-items: center;
@@ -314,8 +297,6 @@ body.layout-resizing {
   letter-spacing: 0;
   font-weight: 500;
 }
-/* The switch itself: a rounded track with a sliding knob. The real checkbox is
-   laid over the top, invisible, so clicking anywhere on the switch toggles it. */
 .column-switch {
   position: relative;
   display: inline-block;
@@ -360,7 +341,6 @@ body.layout-resizing {
   background: #fff;
 }
 
-/* Hide a column's header and cells when its switch is off. */
 .timing-table.hide-col-pos .col-pos,
 .timing-table.hide-col-topspeed .col-topspeed,
 .timing-table.hide-col-bestlap .col-bestlap,
@@ -371,9 +351,6 @@ body.layout-resizing {
   display: none;
 }
 
-/* The Sectors cell holds an inner row of three coloured boxes. The cell stays a
-   normal table cell (so row height and alignment match the other columns); the
-   flex layout lives on the inner row, not on the <td>. */
 .sectors-cell {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -384,10 +361,6 @@ body.layout-resizing {
   vertical-align: middle;
 }
 
-/* One sector time box. The colour says how good the sector is:
-   purple = fastest of anyone, green = the driver's own best, yellow = slower
-   than their best, red = the lap was invalid. A box with no time yet is plain.
-   These use the same theme colours as the Best Lap badge so they match. */
 .sector-box {
   font-family: 'Roboto Mono', monospace;
   font-size: 11px;
@@ -424,7 +397,6 @@ body.layout-resizing {
   border-color: rgba(255, 255, 255, 0.08);
 }
 
-/* ── Timing table ── */
 .timing-table {
   width: 100%;
   border-collapse: collapse;
@@ -461,7 +433,6 @@ body.layout-resizing {
 .timing-table tbody tr.clickable-row { cursor: pointer; }
 .timing-table tbody tr.clickable-row.expanded { background: rgba(255,255,255,0.05); }
 
-/* Boxed +/- button that clearly shows a row can be opened or collapsed. */
 .expand-toggle {
   display: inline-flex;
   align-items: center;
@@ -484,23 +455,16 @@ body.layout-resizing {
   color: var(--blue);
 }
 
-/* Expanded detail rows showing a driver's recent laps. Each lap is its own row
-   reusing the main table's columns. The rows are zebra striped (very slightly,
-   lighter then darker) for easier reading; the first row is the lighter shade. */
 .lap-detail-row td { background: var(--bg3); }
 .lap-detail-row:hover td { background: var(--bg3); }
 .lap-detail-row.detail-light td,
 .lap-detail-row.detail-light:hover td { background: #262c34; }
 .lap-detail-row.detail-dark td,
 .lap-detail-row.detail-dark:hover td { background: var(--bg3); }
-/* The clock (when the lap was set), shown in the driver-name column. */
 .lap-detail-when {
   color: var(--text-muted);
   font-family: 'Roboto Mono', monospace;
 }
-/* Square X box in the position column of each recent lap that deletes that saved
-   lap. Muted by default, turns red on hover so it reads clearly as a remove
-   action. */
 .lap-delete-btn {
   display: inline-flex;
   align-items: center;
@@ -520,12 +484,10 @@ body.layout-resizing {
   color: var(--red);
   border-color: var(--red);
 }
-/* Everything in the dropdown rows is 20% smaller than the main row, so the
-   expanded laps read as secondary detail. */
-.lap-detail-when { font-size: 9.6px; }                /* was 12px */
-.lap-detail-row .td-laps { font-size: 9.6px; }        /* top speed, gap, laps: was 12px */
-.lap-detail-row .laptime-badge { font-size: 10.4px; } /* was 13px */
-.lap-detail-row .sector-box { font-size: 8.8px; }     /* was 11px */
+.lap-detail-when { font-size: 9.6px; }
+.lap-detail-row .td-laps { font-size: 9.6px; }
+.lap-detail-row .laptime-badge { font-size: 10.4px; }
+.lap-detail-row .sector-box { font-size: 8.8px; }
 
 .laptime-badge.invalid {
   background: rgba(248, 81, 73, 0.15);
@@ -620,7 +582,6 @@ body.layout-resizing {
   padding: 30px;
 }
 
-/* ── Right: track area ── */
 .track-area {
   display: flex;
   flex-direction: column;
@@ -770,8 +731,6 @@ body.layout-resizing {
 }
 .track-placeholder-icon { font-size: 36px; opacity: 0.4; }
 
-/* Overlay across the top of the map holding the pole-lap card and the lap
-   notifications side by side, so the toasts sit next to the pole reference. */
 .map-top-overlay {
   position: absolute;
   top: 14px;
@@ -784,7 +743,6 @@ body.layout-resizing {
   pointer-events: none;
 }
 
-/* Pole / track-record lap card, shown at the top-left of the map. */
 .pole-lap-card {
   flex-shrink: 0;
   background: rgba(13, 17, 23, 0.78);
@@ -794,11 +752,6 @@ body.layout-resizing {
   pointer-events: none;
 }
 
-/* Lap notifications sit in the gap between the pole-lap card on the left and the
-   condition markers on the right, stacking downward. The container fills that
-   gap (flex:1 with min-width:0 so it can shrink), and align-items:flex-start
-   keeps each toast sized to its own content so it never stretches under the
-   markers. */
 #lap-toast-container {
   flex: 1;
   min-width: 0;
@@ -843,9 +796,6 @@ body.layout-resizing {
   margin-top: 2px;
 }
 
-/* Live track-condition markers (track temp, air temp, time of day, weather)
-   pinned to the top-right of the map. They sit as the rightmost item in the top
-   overlay so they never overlap the pole card or the lap toasts. */
 .map-conditions {
   flex-shrink: 0;
   display: flex;
@@ -942,7 +892,6 @@ body.layout-resizing {
   font-style: italic;
 }
 
-/* ── Lap toast notifications ── */
 #toast-container {
   position: fixed;
   bottom: 24px;
@@ -954,16 +903,11 @@ body.layout-resizing {
   pointer-events: none;
 }
 
-/* The lap toast mirrors the pole-lap card's exact style. Only the accent colour
-   (label + dot + sector boxes) changes to show how good the lap was:
-   purple = overall fastest, green = personal best, yellow = any other lap,
-   red = invalid. */
 .lap-toast {
   background: rgba(13, 17, 23, 0.78);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 8px 12px;
-  /* Never grow past the gap between the pole card and the markers. */
   max-width: 100%;
   pointer-events: none;
   animation: toast-in 0.25s ease forwards;
@@ -978,8 +922,6 @@ body.layout-resizing {
   text-transform: uppercase;
   margin-bottom: 3px;
 }
-/* Driver name and lap time sit in one row, left to right. The sector boxes go on
-   their own line below this (see .lap-toast-sectors). */
 .lap-toast-line {
   display: flex;
   align-items: center;
@@ -1010,7 +952,6 @@ body.layout-resizing {
   margin-top: 6px;
 }
 
-/* Accent colour per lap quality, applied to the label and the driver dot. */
 .lap-toast.fastest .lap-toast-label { color: var(--purple); }
 .lap-toast.fastest .lap-toast-dot { background: var(--purple); }
 .lap-toast.best .lap-toast-label { color: var(--green); }
@@ -1020,7 +961,6 @@ body.layout-resizing {
 .lap-toast.invalid .lap-toast-label { color: var(--red); }
 .lap-toast.invalid .lap-toast-dot { background: var(--red); }
 
-/* Shared driver line for the generic info toast (bottom-right). */
 .toast-driver {
   font-size: 13px;
   font-weight: 600;
@@ -1031,7 +971,6 @@ body.layout-resizing {
   gap: 6px;
 }
 
-/* Generic text feedback toast (e.g. a player name was saved). */
 .info-toast {
   background: var(--bg2);
   border: 1px solid var(--border);
@@ -1064,7 +1003,6 @@ body.layout-resizing {
   to   { opacity: 0; transform: translateX(30px); }
 }
 
-/* ── Chat / session info ── */
 .chat-area {
   border-top: 1px solid var(--border);
   padding: 8px 14px;

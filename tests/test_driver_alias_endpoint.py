@@ -10,7 +10,6 @@ client = TestClient(app)
 
 @pytest.fixture(autouse=True)
 def _clean_aliases():
-    """driver_name_aliases is an in-memory module-level dict; isolate tests."""
     routes.driver_name_aliases.clear()
     yield
     routes.driver_name_aliases.clear()

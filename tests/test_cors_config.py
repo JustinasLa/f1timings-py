@@ -9,7 +9,6 @@ import app.main as main_module
 
 @pytest.fixture
 def reload_main(monkeypatch):
-    """Reload app.main with CORS_ORIGINS set (or unset), then restore it."""
 
     def _reload(value):
         if value is None:
@@ -21,8 +20,6 @@ def reload_main(monkeypatch):
 
     yield _reload
 
-    # Teardown: reload once more with the env var removed so later test
-    # modules import app.main in its default (no-CORS) state.
     monkeypatch.delenv("CORS_ORIGINS", raising=False)
     importlib.reload(main_module)
 

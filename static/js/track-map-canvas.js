@@ -1,5 +1,3 @@
-/* Track map canvas: loading track data, rendering the circuit and live driver dots. */
-
 async function loadCurrentTrack() {
   try {
     const r = await fetch('/api/track');
@@ -29,9 +27,6 @@ async function loadTrackSelectOptions() {
   if (!toggle || !menu) return;
 
   try {
-    // The supported tracks are exactly the ones in TRACK_DICTIONARY (keyed by
-    // country), so build the menu straight from those keys. Each key is also the
-    // name of its data files, so selecting it always works.
     const trackKeys = Object.keys(TRACK_DICTIONARY).sort();
 
     menu.replaceChildren();
@@ -87,14 +82,9 @@ function switchDisplayTrack(trackName) {
   loadTrackVisualization(currentTrack);
   loadDisplayData();
 
-  // Tell the backend which track is selected so newly driven laps are saved to
-  // this track's file. Without this the backend never knows the track and no
-  // laps get saved.
   saveCurrentTrackToBackend(currentTrack);
 }
 
-/* Send the selected track name to the backend so auto-saved laps are written to
-   the right track file. Failures are non-fatal for the display, so we only log. */
 function saveCurrentTrackToBackend(trackName) {
   fetch('/api/track', {
     method: 'POST',
@@ -152,10 +142,6 @@ function showTrackPlaceholder(msg) {
   ph.querySelector('div:last-child').textContent = msg;
 }
 
-/* Rotate a point around the origin by the given angle in degrees. Positive
-   angles turn the map clockwise on screen (canvas y points downwards). A zero
-   or missing angle leaves the point unchanged, so tracks without a rotation
-   behave exactly as before. */
 function rotatePlanePoint(x, y, rotationDegrees) {
   if (!rotationDegrees) return { x: x, y: y };
   const radians = rotationDegrees * Math.PI / 180;
@@ -167,15 +153,6 @@ function rotatePlanePoint(x, y, rotationDegrees) {
   };
 }
 
-/* The single shared world->canvas step. Every layer (track outline, markers,
-   pit lane and driver dots) goes through here, so they all rotate, scale and
-   centre together and stay lined up. The inputs are "world-plane" coordinates
-   (already divided by d and shifted by the track's offsets); we rotate them by
-   the track's rotation, then scale and centre them to fit the canvas.
-
-   Because the rotation happens here, after the per-track driver offsets have
-   already been added in the world plane, those offsets rotate along with the
-   track and do not need re-tuning when a rotation is set. */
 function planeToCanvas(planeX, planeY, params, transform) {
   const rotation = params.rotation || 0;
   const rotated = rotatePlanePoint(planeX, planeY, rotation);
@@ -185,9 +162,6 @@ function planeToCanvas(planeX, planeY, params, transform) {
   };
 }
 
-/* Work out how to fit the (possibly rotated) track outline onto the canvas. We
-   rotate every outline point first, then size and centre the result, so the
-   rotated track always fits neatly. */
 function computeTrackTransform(td, params) {
   const d = params.d;
   const x_offset = params.x_offset;
@@ -209,9 +183,6 @@ function computeTrackTransform(td, params) {
     if (rotated.y > maxY) maxY = rotated.y;
   }
 
-  // Guard against a zero-width or zero-height range (e.g. a degenerate track
-  // with all points in a line), which would otherwise divide by zero and make
-  // the whole map render as NaN (a blank canvas).
   let rangeX = maxX - minX;
   let rangeY = maxY - minY;
   if (rangeX <= 0) rangeX = 1;
@@ -223,7 +194,6 @@ function computeTrackTransform(td, params) {
   return { minX: minX, minY: minY, scale: scale, centerOffsetX: centerOffsetX, centerOffsetY: centerOffsetY };
 }
 
-/* Build the canvas positions of every track outline point. */
 function buildTrackCanvasPoints(td, params, transform) {
   const canvasPoints = [];
   for (const point of td.points) {
@@ -234,8 +204,6 @@ function buildTrackCanvasPoints(td, params, transform) {
   return canvasPoints;
 }
 
-/* Stroke the white track outline: a faint wide glow first, then the bright line
-   on top. Used by both the first render and every redraw. */
 function strokeTrackOutline(canvasPoints) {
   if (canvasPoints.length === 0) return;
 
@@ -277,8 +245,6 @@ function drawTrackOnCanvas(td, params) {
   const transform = computeTrackTransform(td, params);
   td.transformParams = transform;
 
-  // Draw the pit lane first so the white track outline paints over it where they
-  // meet, letting the gray tuck neatly under the white line.
   drawPitlane();
 
   const canvasPoints = buildTrackCanvasPoints(td, params, transform);
@@ -296,25 +262,20 @@ function redrawCompleteTrack() {
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Draw the pit lane first so the white track outline paints over it where they meet.
   drawPitlane();
 
   const canvasPoints = buildTrackCanvasPoints(trackData, params, trackData.transformParams);
   strokeTrackOutline(canvasPoints);
 
-  // Redraw the markings so they stay visible behind the moving driver dots.
   drawTrackMarkers();
 }
 
-/* Turn a local track coordinate (pos_x, pos_z) into a canvas position, using
-   the same maths (including rotation) as the track outline. */
 function localToCanvas(posX, posZ, params, transform) {
   const planeX = (posZ / params.d) + params.x_offset;
   const planeY = (posX / params.d) + params.z_offset;
   return planeToCanvas(planeX, planeY, params, transform);
 }
 
-/* Find the index of the track point closest to a target canvas position. */
 function findNearestPointIndex(canvasPoints, target) {
   let bestIndex = 0;
   let bestDistance = Infinity;
@@ -330,8 +291,6 @@ function findNearestPointIndex(canvasPoints, target) {
   return bestIndex;
 }
 
-/* Work out a direction that points across the track at the given point, by
-   looking at the point before and after and turning that 90 degrees. */
 function trackDirectionAcross(canvasPoints, index) {
   let before = index - 1;
   if (before < 0) before = canvasPoints.length - 1;
@@ -347,8 +306,6 @@ function trackDirectionAcross(canvasPoints, index) {
   return { x: -dy, y: dx };
 }
 
-/* Draw one marking line across the track with its label. The start/finish line
-   is white, the sector splits are yellow. */
 function drawMarkingLine(center, across, label) {
   const halfWidth = 11;
 
@@ -372,10 +329,6 @@ function drawMarkingLine(center, across, label) {
   ctx.fillText(label, center.x + across.x * (halfWidth + 9), center.y + across.y * (halfWidth + 9));
 }
 
-/* Draw the pit lane alongside the track. It is a separate polyline (not a closed
-   loop) painted in gray so it reads clearly as the pit road rather than the
-   racing line. The pit lane points come from the backend in the same local track
-   space as the outline, so they line up with it. */
 function drawPitlane() {
   if (!trackData || !trackData.transformParams) return;
   if (!Array.isArray(trackData.pitlane) || trackData.pitlane.length < 2) return;
@@ -383,16 +336,11 @@ function drawPitlane() {
   if (!params) return;
   const transform = trackData.transformParams;
 
-  // Work out the canvas position of every pit lane point. The pit lane points
-  // come from real telemetry that already starts and ends on the racing line
-  // (the backend trims the ends to where the path meets the track), so we can
-  // draw the polyline as-is and it joins the track the way a car actually drives.
   const pathPoints = [];
   for (const point of trackData.pitlane) {
     pathPoints.push(localToCanvas(point.pos_x, point.pos_z, params, transform));
   }
 
-  // Faint wide backing line so the gray pit road stands out from the dark map.
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   ctx.lineWidth = 9;
@@ -407,7 +355,6 @@ function drawPitlane() {
   }
   ctx.stroke();
 
-  // The pit lane itself, in gray.
   ctx.lineWidth = 4;
   ctx.strokeStyle = '#9aa3ad';
   ctx.beginPath();
@@ -421,10 +368,6 @@ function drawPitlane() {
   ctx.stroke();
 }
 
-/* Draw the start/finish and sector-split markings on the current track. Each
-   marking is a line painted across the track at the marked spot, plus a label.
-   The marker positions come from the backend (converted from real-world
-   latitude/longitude), so they line up with the real track. */
 function drawTrackMarkers() {
   if (!trackData || !trackData.transformParams) return;
   if (!Array.isArray(trackData.markers) || trackData.markers.length === 0) return;
@@ -432,8 +375,6 @@ function drawTrackMarkers() {
   if (!params) return;
   const transform = trackData.transformParams;
 
-  // Work out the canvas position of every track point once, so we can find the
-  // nearest point to each marking and the direction the track runs there.
   const trackCanvasPoints = [];
   for (const point of trackData.points) {
     trackCanvasPoints.push(localToCanvas(point.pos_x, point.pos_z, params, transform));
@@ -442,8 +383,6 @@ function drawTrackMarkers() {
   for (const marker of trackData.markers) {
     const markerPos = localToCanvas(marker.pos_x, marker.pos_z, params, transform);
 
-    // Snap the marking onto the nearest point of the drawn track so the line
-    // sits neatly across the track.
     const nearestIndex = findNearestPointIndex(trackCanvasPoints, markerPos);
     const center = trackCanvasPoints[nearestIndex];
     const across = trackDirectionAcross(trackCanvasPoints, nearestIndex);
@@ -465,9 +404,6 @@ function drawDriversOnTrack(driversData) {
   for (const [name, driver] of Object.entries(driversData)) {
     if (!hasLivePosition(driver)) continue;
 
-    // Add the per-track driver nudge in the world plane (before rotation), then
-    // run it through the same shared transform as the track so the dot lines up
-    // and rotates with the map.
     const planeX = (Number(driver.world_x) / d) + x_offset + driver_x_offset;
     const planeY = (Number(driver.world_z) / d) + z_offset + driver_z_offset;
     const driverCanvas = planeToCanvas(planeX, planeY, params, transform);
@@ -492,8 +428,6 @@ function drawDriversOnTrack(driversData) {
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Build initials from the name's words, skipping empty pieces so names with
-    // leading/double spaces (or an all-spaces name) don't produce blank labels.
     const displayName = (driver.name || name || '').trim();
     const nameParts = displayName.split(' ');
     let initials = '';

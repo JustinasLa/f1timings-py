@@ -42,7 +42,6 @@ def test_escape_attr_and_escape_html_escape_dangerous_characters():
     attr = data["attr"]
     html = data["html"]
 
-    # escapeAttr: no raw &, <, >, ", ' outside of entity encodings.
     stripped_entities = (
         attr.replace("&amp;", "")
         .replace("&lt;", "")
@@ -58,7 +57,6 @@ def test_escape_attr_and_escape_html_escape_dangerous_characters():
     assert "&quot;" in attr
     assert "&#39;" in attr
 
-    # escapeHtml escapes & < > but is not required to touch quotes.
     assert html == "&amp;&lt;&gt;"
 
 
