@@ -1095,7 +1095,10 @@ def telemetry_listener_worker(host: str, port: int, stop_event: threading.Event)
                                                     sector_3_ms=saved_s3,
                                                 )
                                                 _submit_to_main_loop(
-                                                    add_or_update_lap_time(lap_input),
+                                                    add_or_update_lap_time(
+                                                        lap_input,
+                                                        TRACK_ID_TO_NAME.get(source_state["session"].get("trackId")),
+                                                    ),
                                                     f"Auto-save lap for {lap_driver_name!r}",
                                                 )
                                                 saved_signatures.append(lap_signature)
