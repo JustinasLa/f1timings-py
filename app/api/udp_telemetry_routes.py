@@ -18,6 +18,7 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 SECTOR_PACE_IDLE_SECONDS = 45
+SOURCE_STALE_SECONDS = 10
 
 
 class DriverAliasInput(BaseModel):
@@ -170,10 +171,14 @@ async def get_live_driver_data_for_api() -> Dict[str, DriverResponse]:
 
     now_time = time.time()
 
-    if telemetry_sources:
-        with telemetry_sources_lock:
-            source_items = list(telemetry_sources.items())
-    else:
+    with telemetry_sources_lock:
+        source_items = list(telemetry_sources.items())
+        stale_source_ids = {
+            source_id
+            for source_id, source_state in source_items
+            if now_time - source_state["last_seen"] > SOURCE_STALE_SECONDS
+        }
+    if not source_items:
         source_items = [
             (
                 "local",
@@ -187,6 +192,8 @@ async def get_live_driver_data_for_api() -> Dict[str, DriverResponse]:
         ]
 
     for instance_index, (source_id, source_state) in enumerate(source_items):
+        if source_id in stale_source_ids:
+            continue
         source_participants = source_state.get("participants", [])
         source_positions = source_state.get("positions", [])
         source_laps = source_state.get("laps", [])
@@ -1373,15 +1380,18 @@ async def stop_telemetry():
 @telemetry_router.get("/status", response_model=TelemetryStatus)
 async def get_telemetry_status():
     is_running = listener_thread is not None and listener_thread.is_alive()
-    total_active_drivers = (
-        sum(
-            source.get("active_drivers_count", 0)
-            for source in telemetry_sources.values()
-            if isinstance(source.get("active_drivers_count", 0), int)
+    now_time = time.time()
+    with telemetry_sources_lock:
+        total_active_drivers = (
+            sum(
+                source.get("active_drivers_count", 0)
+                for source in telemetry_sources.values()
+                if isinstance(source.get("active_drivers_count", 0), int)
+                and now_time - source["last_seen"] <= SOURCE_STALE_SECONDS
+            )
+            if telemetry_sources
+            else active_drivers_count
         )
-        if telemetry_sources
-        else active_drivers_count
-    )
 
     current_error = listener_error
     if (
