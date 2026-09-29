@@ -10,14 +10,7 @@ import app.main as main_module
 from app.services.websocket_manager import ConnectionManager
 
 
-# app.main can be importlib.reload()-ed by other test modules (see
-# test_cors_config.py), which rebinds app.main.app/app.main.manager to new
-# objects. Look them up at test-run time via main_module, not at import time,
-# so this test stays correct regardless of module import/run order.
-
-
 def test_client_disconnect_removes_connection():
-    """Client-initiated close (WebSocketDisconnect path) drops the connection."""
     client = TestClient(main_module.app)
     with client.websocket_connect("/ws") as ws:
         assert len(main_module.manager.active_connections) == 1
@@ -25,7 +18,6 @@ def test_client_disconnect_removes_connection():
 
 
 def test_non_disconnect_exception_still_removes_connection(monkeypatch):
-    """A non-WebSocketDisconnect error on the server side still cleans up via finally."""
 
     async def boom(self, *args, **kwargs):
         raise RuntimeError("boom")

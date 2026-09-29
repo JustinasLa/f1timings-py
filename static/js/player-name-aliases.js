@@ -1,5 +1,3 @@
-/* "Player Names" panel: mapping raw telemetry names to display names. */
-
 async function loadDriverAliases() {
   try {
     driverAliases = await fetchJsonWithTimeout("/api/telemetry/driver_aliases", 1500);
@@ -51,9 +49,6 @@ function updateDriverAliasPanel(liveDrivers) {
   }).join('');
 }
 
-/* One delegated handler for the Save buttons. The panel is re-rendered with
-   innerHTML on every update, so the listener lives on the list and is bound
-   once. mousedown is prevented so clicking Save does not blur the input first. */
 function bindDriverAliasClicks(list) {
   if (list.dataset.clicksBound === '1') return;
   list.dataset.clicksBound = '1';
@@ -80,7 +75,6 @@ async function saveDriverAlias(telemetryName) {
     });
     loadLiveDriverPositions();
 
-    // Confirm the change so the operator knows it was applied.
     if (displayName) {
       showInfoToast("Player name set", telemetryName + " → " + displayName, false);
     } else {

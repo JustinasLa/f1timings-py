@@ -1,5 +1,3 @@
-/* Static configuration: colors, track parameters, and polling constants. */
-
 const FETCH_INTERVAL_MS = 100;
 const DRIVER_DOT_RADIUS = 10;
 
@@ -15,7 +13,6 @@ const TEAM_COLORS = {
   'McLaren F1 Team': '#FF8700',
   'Stake F1 Team Kick Sauber': '#52E252',
   
-  // Simulators: the team name says which sim the lap came from.
   'nhlstendensim': '#1E78FF',
   'nhlstendensim2': '#FF8700',
 
@@ -23,16 +20,6 @@ const TEAM_COLORS = {
 };
 const INSTANCE_COLORS = ['#1E78FF', '#FF8700'];
 
-// Per-track map render settings. Fields:
-//   d              - divisor that scales the raw coordinates down
-//   x_offset       - shift of the whole map along the horizontal axis
-//   z_offset       - shift of the whole map along the vertical axis
-//   driver_x_offset/driver_z_offset - nudge to line live driver dots onto the track
-//   rotation       - OPTIONAL: turn the whole map (and the driver dots) by this
-//                    many degrees, clockwise on screen. Leave it out or set 0 for
-//                    no rotation. The driver offsets rotate with the map, so you
-//                    do NOT need to retune them when you change this.
-//                    Example: set rotation:90 on monaco to turn Monaco a quarter turn.
 const TRACK_DICTIONARY = {
   'abu_dhabi':        { d:2,   x_offset:800, z_offset:400, driver_x_offset:-115, driver_z_offset:45, rotation: 25 },
   'australia':        { d:3.5, x_offset:800, z_offset:400, rotation: -45 },

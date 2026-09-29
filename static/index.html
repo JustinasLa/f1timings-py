@@ -8,7 +8,6 @@
 </head>
 <body>
 
-  <!-- Session header -->
   <div class="session-header">
     <div class="pos-badge">
       <div class="pos-label">Drivers</div>
@@ -36,10 +35,8 @@
     </div>
   </div>
 
-  <!-- Main layout -->
   <div class="main-layout">
 
-    <!-- Left: timing tables -->
     <div class="timing-area">
       <div class="table-section">
         <div class="section-title">
@@ -114,17 +111,13 @@
             </tr>
           </thead>
           <tbody id="timingTableBody">
-            <!-- Rows are rendered by stored-lap-leaderboard.js -->
           </tbody>
         </table>
       </div>
     </div>
 
-    <!-- Draggable divider: drag left/right to resize the two panes (drag right to
-         shrink the map, left to enlarge it). -->
     <div class="layout-divider" id="layoutDivider" role="separator" aria-orientation="vertical" aria-label="Resize panels" title="Drag to resize"></div>
 
-    <!-- Right: track map -->
     <div class="track-area">
       <div class="track-header">
         <div class="track-header-main">
@@ -137,11 +130,7 @@
         <span class="fastest-lap-pill" id="fastestLapPill" style="display:none">--:--.---</span>
       </div>
       <div class="track-canvas-wrap">
-        <!-- Top overlay holding the pole-lap reference and the lap notifications
-             side by side, pinned to the top of the map. -->
         <div class="map-top-overlay">
-          <!-- Pole / track-record lap shown on the map (the reference lap marked
-               with "is_pole_reference" in the track_times file, e.g. Leclerc at Monaco). -->
           <div class="pole-lap-card" id="poleLapCard" style="display:none">
             <div class="pole-lap-label">2024 Pole Lap</div>
             <div class="pole-lap-driver">
@@ -151,11 +140,7 @@
             <div class="pole-lap-time" id="poleLapTime">--:--.---</div>
             <div class="pole-lap-meta" id="poleLapMeta"></div>
           </div>
-          <!-- Lap-time notifications (new best / fastest lap) appear here, next
-               to the pole-lap reference. -->
           <div id="lap-toast-container"></div>
-          <!-- Live track conditions from the F1 24 session packet, pinned to the
-               top-right of the map. Hidden until a session packet arrives. -->
           <div class="map-conditions" id="mapConditions" style="display:none">
             <div class="condition-marker">
               <div class="condition-label">Track</div>
@@ -186,7 +171,6 @@
 
   <div id="toast-container"></div>
 
-  <!-- Modules loaded in dependency order: config/state/utils first, features next, bootstrap last -->
   <script src="/js/dashboard-settings.js"></script>
   <script src="/js/shared-dashboard-state.js"></script>
   <script src="/js/formatting-and-fetch-helpers.js"></script>
