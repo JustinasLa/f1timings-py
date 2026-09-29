@@ -167,11 +167,17 @@ The F1 timing dashboard underwent major performance optimization to handle real-
   $ python app.py
   ```
 
-The server listens on `0.0.0.0:8080` by default, or `0.0.0.0:8000` if using uvicorn to run the program.
+`python app.py` listens on `0.0.0.0:8000` by default (see `HOST`/`PORT` below). Plain `uvicorn app.main:app` uses its own `--host`/`--port` flags instead.
 
 ## Configuration
 
 - `CORS_ORIGINS` — comma-separated list of allowed cross-origin request origins (e.g. `http://localhost:5173,http://example.com`). Unset or empty by default, which disables CORS entirely since the dashboard is served by this same app. Credentials are allowed for listed origins. Using `*` disables credentials (browsers reject `Access-Control-Allow-Origin: *` with credentials) and logs a warning. The `null` origin is ignored.
+
+### Security / network
+
+- `HOST` / `PORT` — bind address and port for `python app.py` and `python -m app.main` (default `0.0.0.0` / `8000`). Use `HOST=127.0.0.1` to keep the server off the LAN.
+- `ALLOWED_HOSTS` — comma-separated extra hostnames accepted in the `Host` header (e.g. `f1.lan`). `localhost`, IP addresses and this machine's hostname (with or without `.local`) are always accepted; anything else gets `400`, which blocks DNS-rebinding attacks.
+- Non-GET requests and `/ws` connections that carry a browser `Origin` other than the server itself (or an entry in `CORS_ORIGINS`) are rejected with `403`. Requests without an `Origin` (curl, scripts) are unaffected. There is no login: anyone who can reach the port can still use the API directly.
 
 ## License
 

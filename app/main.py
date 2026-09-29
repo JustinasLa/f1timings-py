@@ -1,7 +1,10 @@
 import asyncio
+import ipaddress
 import logging
 import os
+import socket
 from contextlib import asynccontextmanager
+from urllib.parse import urlsplit
 from dotenv import load_dotenv
 
 import uvicorn
@@ -10,9 +13,10 @@ load_dotenv()
 from fastapi import FastAPI, HTTPException, Request
 from fastapi import WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.exceptions import RequestValidationError
+from starlette.datastructures import Headers
 
 from app.services.lap_time_store import (
     set_websocket_manager,
@@ -70,6 +74,70 @@ if cors_origins:
     )
     logger.info("CORS enabled for origins: %s", cors_origins)
 
+_machine_name = socket.gethostname().lower().removesuffix(".local")
+allowed_hosts = {"localhost", _machine_name, _machine_name + ".local"} | {
+    host.strip().lower()
+    for host in os.getenv("ALLOWED_HOSTS", "").split(",")
+    if host.strip()
+}
+
+
+def _host_allowed(host_header: str) -> bool:
+    hostname = urlsplit("//" + host_header).hostname or ""
+    try:
+        ipaddress.ip_address(hostname)
+        return True
+    except ValueError:
+        return hostname in allowed_hosts
+
+
+def _origin_allowed(origin: str, scheme: str, host_header: str) -> bool:
+    origin = origin.lower()
+    scheme = {"ws": "http", "wss": "https"}.get(scheme, scheme)
+    return (
+        origin == f"{scheme}://{host_header.lower()}"
+        or "*" in cors_origins
+        or origin in (o.lower() for o in cors_origins)
+    )
+
+
+class HostOriginGuard:
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] in ("http", "websocket"):
+            headers = Headers(scope=scope)
+            host = headers.get("host", "")
+            origin = headers.get("origin")
+            status = None
+            if not _host_allowed(host):
+                status = 400
+            elif (
+                origin is not None
+                and scope.get("method") not in ("GET", "HEAD", "OPTIONS")
+                and not _origin_allowed(origin, scope["scheme"], host)
+            ):
+                status = 403
+            if status is not None:
+                logger.warning(
+                    "Rejected %s (%s) host=%r origin=%r",
+                    scope["type"], status, host, origin,
+                )
+                if scope["type"] == "websocket":
+                    await send({"type": "websocket.close", "code": 1008})
+                else:
+                    response = PlainTextResponse(
+                        "Invalid host" if status == 400 else "Forbidden",
+                        status_code=status,
+                    )
+                    await response(scope, receive, send)
+                return
+        await self.app(scope, receive, send)
+
+
+app.add_middleware(HostOriginGuard)
+
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -125,4 +193,9 @@ app.mount("/", StaticFiles(directory="static", html=True), name="static")
 
 if __name__ == "__main__":
     logger.info("Starting Uvicorn server...")
-    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run(
+        "app.main:app",
+        host=os.getenv("HOST", "0.0.0.0"),
+        port=int(os.getenv("PORT", "8000")),
+        reload=True,
+    )
