@@ -30,11 +30,11 @@ def _session_packet(track_id):
     )
 
 
-def _participants_packet(name):
+def _participants_packet(name, ai=0):
     return SimpleNamespace(
         header=SimpleNamespace(packet_id=4),
         num_active_cars=1,
-        participants=[SimpleNamespace(name=name.encode(), team_id=0)],
+        participants=[SimpleNamespace(name=name.encode(), team_id=0, ai_controlled=ai)],
     )
 
 
@@ -242,3 +242,69 @@ def test_full_circuit_lap_still_saved_after_short_layout_id_removed(worker_env, 
 
     assert saves == [("bahrain", "Hamilton")]
     assert app_data.track_name == "bahrain"
+
+
+def test_ai_controlled_participant_lap_not_saved(worker_env, monkeypatch):
+    saves, ws = worker_env
+    app_data.track_name = "spain"
+
+    _run_worker(
+        monkeypatch,
+        [
+            _participants_packet("Bot", ai=1),
+            _lap_packet(0),
+            _lap_packet(75123),
+        ],
+    )
+
+    assert saves == []
+    assert [m for m in ws.messages if m["type"] == "laptime_update"] == []
+
+
+def test_human_participant_lap_saved_when_ai_participant_present(worker_env, monkeypatch):
+    saves, ws = worker_env
+    app_data.track_name = "spain"
+    packet = SimpleNamespace(
+        header=SimpleNamespace(packet_id=4),
+        num_active_cars=2,
+        participants=[
+            SimpleNamespace(name=b"Hamilton", team_id=0, ai_controlled=0),
+            SimpleNamespace(name=b"Bot", team_id=1, ai_controlled=1),
+        ],
+    )
+
+    def laps(first_ms, second_ms):
+        return SimpleNamespace(
+            header=SimpleNamespace(packet_id=2),
+            lap_data=[
+                SimpleNamespace(last_lap_time_in_ms=first_ms, current_lap_invalid=0),
+                SimpleNamespace(last_lap_time_in_ms=second_ms, current_lap_invalid=0),
+            ],
+        )
+
+    _run_worker(monkeypatch, [packet, laps(0, 0), laps(75123, 76000)])
+
+    assert saves == [("spain", "Hamilton")]
+
+
+def test_lap_of_slot_without_participant_data_not_treated_as_ai(worker_env, monkeypatch):
+    saves, ws = worker_env
+    app_data.track_name = "spain"
+    packet = SimpleNamespace(
+        header=SimpleNamespace(packet_id=4),
+        num_active_cars=2,
+        participants=[SimpleNamespace(name=b"Hamilton", team_id=0, ai_controlled=0)],
+    )
+
+    def laps(first_ms, second_ms):
+        return SimpleNamespace(
+            header=SimpleNamespace(packet_id=2),
+            lap_data=[
+                SimpleNamespace(last_lap_time_in_ms=first_ms, current_lap_invalid=0),
+                SimpleNamespace(last_lap_time_in_ms=second_ms, current_lap_invalid=0),
+            ],
+        )
+
+    _run_worker(monkeypatch, [packet, laps(0, 0), laps(75123, 76000)])
+
+    assert saves == [("spain", "Hamilton")]
