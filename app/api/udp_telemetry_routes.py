@@ -1087,6 +1087,12 @@ def telemetry_listener_worker(host: str, port: int, stop_event: threading.Event)
                                                 lap_driver_name,
                                                 ms_to_laptime_str(last_lap_ms),
                                             )
+                                        elif participant.get("aiControlled") == 1:
+                                            logger.debug(
+                                                "Skipping auto-save of AI lap: %s - %s",
+                                                lap_driver_name,
+                                                ms_to_laptime_str(last_lap_ms),
+                                            )
                                         elif (
                                             normalized_telemetry_name not in IGNORED_AUTOSAVE_DRIVER_NAMES
                                             and lap_signature not in saved_signatures
