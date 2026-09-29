@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import Dict, List, Optional
 from fastapi import APIRouter, HTTPException
@@ -116,7 +117,7 @@ async def get_track_records_endpoint(track: str = None):
         raise HTTPException(status_code=404, detail="No track name set or specified")
 
     try:
-        lap_times = load_track_records(track_name)
+        lap_times = await asyncio.to_thread(load_track_records, track_name)
     except (OSError, ValueError) as error:
         logger.warning(f"Could not read lap times for '{track_name}': {error}")
         lap_times = []
@@ -131,7 +132,8 @@ async def delete_track_record_endpoint(delete_input: LapDeleteInput):
         raise HTTPException(status_code=404, detail="No track name set or specified")
 
     try:
-        removed = delete_lap_record(
+        removed = await asyncio.to_thread(
+            delete_lap_record,
             track_name,
             delete_input.driver,
             delete_input.time,
