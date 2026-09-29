@@ -24,6 +24,10 @@ class ConnectionManager:
         except Exception:
             self.disconnect(connection)
             logger.warning("Dropping websocket client %s: send failed", connection.client)
+            try:
+                await asyncio.wait_for(connection.close(), timeout=1.0)
+            except Exception:
+                logger.debug("Closing websocket client %s failed", connection.client)
 
     async def broadcast(self, message: dict):
         connections = self.active_connections.copy()
