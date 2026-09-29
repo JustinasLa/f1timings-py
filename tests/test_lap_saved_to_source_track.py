@@ -88,6 +88,7 @@ def worker_env(monkeypatch):
 
 
 def _run_worker(monkeypatch, packets, sender_ip="10.0.0.2"):
+    # A packet may be given as (ip, packet) to override sender_ip for that packet.
     stop_event = threading.Event()
     queue = list(packets)
 
@@ -95,7 +96,9 @@ def _run_worker(monkeypatch, packets, sender_ip="10.0.0.2"):
         if not queue:
             stop_event.set()
             raise socket.timeout()
-        return queue.pop(0), (sender_ip, 20777)
+        item = queue.pop(0)
+        ip, packet = item if isinstance(item, tuple) else (sender_ip, item)
+        return packet, (ip, 20777)
 
     monkeypatch.setattr(udp_telemetry_routes, "_parse_packet_with_sender", fake_parse)
     udp_telemetry_routes.telemetry_listener_worker("0.0.0.0", 20777, stop_event)
@@ -139,3 +142,59 @@ def test_lap_falls_back_to_displayed_track_without_known_source_track(worker_env
     assert saves == [("monza", "Hamilton")]
     lap_messages = [m for m in ws.messages if m["type"] == "laptime_update"]
     assert lap_messages[0]["data"]["track"] == "monza"
+
+
+def test_each_sender_lap_saved_to_its_own_session_track(worker_env, monkeypatch):
+    saves, ws = worker_env
+    app_data.track_name = "spain"
+    a, b = "10.0.0.2", "10.0.0.3"
+
+    # Both sessions are announced before either lap, so the displayed track
+    # has already moved on to the last-announced one (monza) when A's lap lands.
+    _run_worker(
+        monkeypatch,
+        [
+            (a, _session_packet(5)),
+            (a, _participants_packet("Hamilton")),
+            (a, _lap_packet(0)),
+            (b, _session_packet(11)),
+            (b, _participants_packet("Verstappen")),
+            (b, _lap_packet(0)),
+            (a, _lap_packet(75123)),
+            (b, _lap_packet(80456)),
+        ],
+    )
+
+    assert sorted(saves) == [("monaco", "Hamilton"), ("monza", "Verstappen")]
+    # Displayed track auto-follows the most recent Session packet; save target does not.
+    assert app_data.track_name == "monza"
+    tracks = {
+        m["data"]["name"]: m["data"]["track"]
+        for m in ws.messages
+        if m["type"] == "laptime_update"
+    }
+    assert tracks == {"Hamilton": "monaco", "Verstappen": "monza"}
+
+
+@pytest.mark.parametrize("unmapped_track_id", [255, -1])
+def test_lap_falls_back_to_displayed_track_when_source_track_id_unmapped(
+    worker_env, monkeypatch, unmapped_track_id
+):
+    saves, ws = worker_env
+    app_data.track_name = "spain"
+
+    _run_worker(
+        monkeypatch,
+        [
+            _session_packet(unmapped_track_id),
+            _participants_packet("Hamilton"),
+            _lap_packet(0),
+            _lap_packet(75123),
+        ],
+    )
+
+    assert saves == [("spain", "Hamilton")]
+    assert app_data.track_name == "spain"
+    lap_messages = [m for m in ws.messages if m["type"] == "laptime_update"]
+    assert len(lap_messages) == 1
+    assert lap_messages[0]["data"]["track"] == "spain"
