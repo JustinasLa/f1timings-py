@@ -1,4 +1,4 @@
 fastapi
 uvicorn[standard]
 python-dotenv
-f1-24-telemetry @ git+https://github.com/xavierdubuc/f1-24-telemetry.git
+f1-24-telemetry @ git+https://github.com/xavierdubuc/f1-24-telemetry.git@dc3e2991a0f01c82c39b000cb3ebf2697557b321
