@@ -286,10 +286,6 @@ class TrackService:
                 )
                 points.append(point)
 
-            if not points:
-                logger.error(f"No valid track points generated from {file_path}")
-                return None
-
             track_data = TrackData(
                 name=track_name,
                 track_info=track_info,

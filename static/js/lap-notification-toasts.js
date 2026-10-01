@@ -58,7 +58,7 @@ function classifyLapForToast(data) {
   if (newSeconds <= overallBestSeconds) {
     return { qualityClass: 'fastest', labelText: 'Fastest Lap' };
   }
-  if (newSeconds <= driverBestSeconds) {
+  if (driverBestSeconds !== Infinity && newSeconds <= driverBestSeconds) {
     return { qualityClass: 'best', labelText: 'Personal Best' };
   }
   return { qualityClass: 'normal', labelText: 'Lap' };

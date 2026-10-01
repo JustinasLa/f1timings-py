@@ -880,9 +880,9 @@ def telemetry_listener_worker(host: str, port: int, stop_event: threading.Event)
                                 if i not in processed_indices and i >= num_to_process:
                                     participant_data_store[i] = {}
 
-                        logger.debug(
-                            f"Participant data store updated. Active drivers: {active_drivers_count}. Processed up to {min(num_to_process, len(packet.participants), 22)} participants."
-                        )
+                            logger.debug(
+                                f"Participant data store updated. Active drivers: {active_drivers_count}. Processed up to {min(num_to_process, len(packet.participants), 22)} participants."
+                            )
                         if (
                             participant_data_store
                             and len(participant_data_store) > 0
