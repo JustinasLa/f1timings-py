@@ -452,8 +452,10 @@ def median_value(values):
 
 
 def resample_path(points, count):
-    if len(points) < 2 or count < 2:
+    if not points or count < 2:
         return list(points)
+    if len(points) < 2:
+        return [points[0]] * count
 
     cumulative = [0.0]
     for i in range(1, len(points)):
@@ -463,7 +465,7 @@ def resample_path(points, count):
 
     total = cumulative[-1]
     if total == 0:
-        return list(points)
+        return [points[0]] * count
 
     step = total / (count - 1)
     result = []

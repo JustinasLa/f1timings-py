@@ -501,9 +501,10 @@ def test_median_value(script):
 
 
 def test_resample_path(script):
-    assert script.resample_path([(1.0, 1.0)], 5) == [(1.0, 1.0)]
+    assert script.resample_path([], 5) == []
+    assert script.resample_path([(1.0, 1.0)], 5) == [(1.0, 1.0)] * 5
     assert script.resample_path([(0.0, 0.0), (1.0, 0.0)], 1) == [(0.0, 0.0), (1.0, 0.0)]
-    assert script.resample_path([(2.0, 2.0), (2.0, 2.0)], 5) == [(2.0, 2.0), (2.0, 2.0)]
+    assert script.resample_path([(2.0, 2.0), (2.0, 2.0)], 5) == [(2.0, 2.0)] * 5
 
     result = script.resample_path([(0.0, 0.0), (0.0, 0.0), (10.0, 0.0), (10.0, 10.0)], 5)
     expected = [(0, 0), (5, 0), (10, 0), (10, 5), (10, 10)]
@@ -544,6 +545,16 @@ def test_average_pit_traces_with_zero_typical_length(script):
 
     assert used == 3
     assert averaged[30] == _approx_point((30.0, 0.0))
+
+
+def test_average_pit_traces_with_short_stationary_traces(script):
+    # Zero-length traces with fewer points than the resample count used to
+    # raise IndexError while averaging.
+    averaged, used = script.average_pit_traces([[(1.0, 2.0)] * 3, [(3.0, 4.0)]])
+
+    assert used == 2
+    assert len(averaged) == script.PIT_RESAMPLE_POINTS
+    assert all(point == _approx_point((2.0, 3.0)) for point in averaged)
 
 
 # --- pit lane ----------------------------------------------------------------

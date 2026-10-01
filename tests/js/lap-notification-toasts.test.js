@@ -20,8 +20,9 @@ test('classifyLapForToast labels invalid, fastest, personal best and normal laps
   assert.deepEqual(plain(w.classifyLapForToast({ name: 'Bob', time: '1:30.000' })), { qualityClass: 'fastest', labelText: 'Fastest Lap' });
   assert.deepEqual(plain(w.classifyLapForToast({ name: 'Bob', time: '1:31.000' })), { qualityClass: 'best', labelText: 'Personal Best' });
   assert.deepEqual(plain(w.classifyLapForToast({ name: 'Bob', time: '1:32.500' })), { qualityClass: 'normal', labelText: 'Lap' });
-  // A driver's first lap is always a personal best.
-  assert.deepEqual(plain(w.classifyLapForToast({ name: 'New', time: '1:40.000' })), { qualityClass: 'best', labelText: 'Personal Best' });
+  // A driver's first valid lap has nothing to beat, so it is not a personal best.
+  assert.deepEqual(plain(w.classifyLapForToast({ name: 'New', time: '1:40.000' })), { qualityClass: 'normal', labelText: 'Lap' });
+  assert.deepEqual(plain(w.classifyLapForToast({ name: 'NoLaps', time: '1:40.000' })), { qualityClass: 'normal', labelText: 'Lap' });
 });
 
 test('buildToastSectorsHtml renders coloured sectors only when any sector is known', () => {

@@ -304,22 +304,20 @@ def test_participants_packet_with_legacy_active_cars_field(monkeypatch):
     assert stored[1] == {}  # beyond m_numActiveCars -> not processed, cleared
 
 
-def test_participants_packet_without_count_or_list_hits_worker_error(monkeypatch, caplog):
-    # No num_active_cars / m_numActiveCars and no participants list: the debug
-    # log after the participants block references an unbound local, which the
-    # worker's generic handler turns into listener_error.
+def test_participants_packet_without_count_or_list_is_handled(monkeypatch, caplog):
+    # No num_active_cars / m_numActiveCars and no participants list: the
+    # worker warns, keeps the previous count and carries on without error.
     packet = SimpleNamespace(header=SimpleNamespace(packet_id=4))
 
     with caplog.at_level(logging.WARNING, logger=routes.logger.name):
-        run_worker(monkeypatch, [packet, participants("Hamilton")])
+        run_worker(monkeypatch, [participants("Hamilton"), packet])
 
     assert any(
         "NEITHER 'num_active_cars' NOR 'm_numActiveCars'" in r.getMessage()
         for r in caplog.records
     )
-    assert routes.listener_error.startswith(
-        "Error in telemetry worker: UnboundLocalError"
-    )
+    assert routes.listener_error is None
+    assert state()["active_drivers_count"] == 1
     assert state()["participants"][0]["name"] == "Hamilton"
 
 
