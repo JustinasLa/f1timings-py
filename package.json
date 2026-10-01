@@ -1,0 +1,11 @@
+{
+  "name": "f1timings-frontend-tests",
+  "private": true,
+  "description": "Unit tests for the vanilla-JS dashboard in static/js",
+  "scripts": {
+    "test": "node --test --experimental-test-coverage \"--test-coverage-include=static/js/**\" --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100 \"tests/js/*.test.js\""
+  },
+  "devDependencies": {
+    "jsdom": "^30.1.1"
+  }
+}

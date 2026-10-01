@@ -22,3 +22,10 @@ fastf1_cache/
 .claude/
 CLAUDE.md
 driver_aliases.json
+
+.coverage
+coverage.xml
+htmlcov/
+
+node_modules/
+coverage/
