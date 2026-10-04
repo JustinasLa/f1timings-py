@@ -19,8 +19,8 @@ python app.py   # http://localhost:8000
 | `F1_TELEMETRY_LISTENER_HOST` | `0.0.0.0` | UDP telemetry bind address. |
 | `DEBUG` | `false` | Verbose logging. |
 
-Cross-origin non-GET requests and `/ws` connections are rejected with `403`. There is no login: anyone who can reach the port can use the API.
+Non-GET requests and `/ws` connections whose `Origin` is neither this server nor in `CORS_ORIGINS` get `403`. There is no login: anyone who can reach the port can use the API.
 
 ## License
 
-MIT, see [LICENSE](LICENSE).
+MIT.
