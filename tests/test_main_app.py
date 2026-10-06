@@ -35,13 +35,13 @@ def test_validation_errors_return_422_with_details():
 def test_unhandled_exceptions_return_generic_500(monkeypatch):
     from app.api import display_data_routes
 
-    def boom():
+    async def boom():
         raise RuntimeError("kaboom")
 
-    monkeypatch.setattr(display_data_routes.track_service, "get_available_tracks", boom)
+    monkeypatch.setattr(display_data_routes, "get_track", boom)
     client = TestClient(main_module.app, raise_server_exceptions=False)
 
-    resp = client.get("/api/tracks")
+    resp = client.get("/api/track")
 
     assert resp.status_code == 500
     assert resp.json() == {"detail": "An internal server error occurred."}

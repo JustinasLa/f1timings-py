@@ -28,7 +28,7 @@ def test_no_env_var_means_no_cors_headers(reload_main):
     mod = reload_main(None)
     client = TestClient(mod.app)
 
-    resp = client.get("/api/drivers", headers={"Origin": "http://evil.example"})
+    resp = client.get("/api/track", headers={"Origin": "http://evil.example"})
 
     assert "access-control-allow-origin" not in resp.headers
 
@@ -37,7 +37,7 @@ def test_allowed_origin_gets_acao_and_credentials(reload_main):
     mod = reload_main("http://a.example, http://b.example,")
     client = TestClient(mod.app)
 
-    resp = client.get("/api/drivers", headers={"Origin": "http://a.example"})
+    resp = client.get("/api/track", headers={"Origin": "http://a.example"})
 
     assert resp.headers.get("access-control-allow-origin") == "http://a.example"
     assert resp.headers.get("access-control-allow-credentials") == "true"
@@ -47,7 +47,7 @@ def test_disallowed_origin_gets_no_acao_header(reload_main):
     mod = reload_main("http://a.example, http://b.example,")
     client = TestClient(mod.app)
 
-    resp = client.get("/api/drivers", headers={"Origin": "http://evil.example"})
+    resp = client.get("/api/track", headers={"Origin": "http://evil.example"})
 
     assert "access-control-allow-origin" not in resp.headers
 
@@ -57,7 +57,7 @@ def test_wildcard_origin_disables_credentials_and_warns(reload_main, caplog):
         mod = reload_main("*")
 
     client = TestClient(mod.app)
-    resp = client.get("/api/drivers", headers={"Origin": "http://evil.example"})
+    resp = client.get("/api/track", headers={"Origin": "http://evil.example"})
 
     assert resp.headers.get("access-control-allow-origin") == "*"
     assert "access-control-allow-credentials" not in resp.headers
@@ -72,10 +72,10 @@ def test_null_origin_is_ignored_and_warns(reload_main, caplog):
 
     client = TestClient(mod.app)
 
-    null_resp = client.get("/api/drivers", headers={"Origin": "null"})
+    null_resp = client.get("/api/track", headers={"Origin": "null"})
     assert "access-control-allow-origin" not in null_resp.headers
 
-    allowed_resp = client.get("/api/drivers", headers={"Origin": "http://a.example"})
+    allowed_resp = client.get("/api/track", headers={"Origin": "http://a.example"})
     assert allowed_resp.headers.get("access-control-allow-origin") == "http://a.example"
 
     assert any(
