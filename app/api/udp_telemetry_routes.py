@@ -130,6 +130,18 @@ WEATHER_MAP = {
 TYRE_COMPOUND_MAP = {16: "Soft", 17: "Medium", 18: "Hard", 7: "Inter", 8: "Wet"}
 
 
+def _lap_assists(participant: dict, racing_line: int):
+    """Assists on for a lap; None when Car Status has not arrived yet."""
+    if "tractionControl" not in participant:
+        return None
+    flags = (
+        ("TC", participant["tractionControl"]),
+        ("ABS", participant.get("antiLockBrakes")),
+        ("RL", racing_line),
+    )
+    return [name for name, on in flags if on]
+
+
 def get_weather_name(weather_id: int) -> str:
     return WEATHER_MAP.get(weather_id, "Unknown")
 
@@ -508,6 +520,7 @@ def _get_source_state(source_id: str) -> Dict[str, Any]:
                 "last_seen": time.time(),
                 "last_lap_times": [0] * 22,
                 "lap_owner_names": [None] * 22,
+                "lap_start_tyres": [None] * 22,
                 "lap_top_speeds": [0.0] * 22,
                 "saved_signatures": [],
                 "lap_tracking_started": [False] * 22,
@@ -525,9 +538,30 @@ def _get_source_state(source_id: str) -> Dict[str, Any]:
         return telemetry_sources[source_id]
 
 
+EXPECTED_PACKET_FORMAT = 2024
+_FORMAT_ERROR_PREFIX = "UDP format "
+_warned_packet_formats: set = set()
+
+
+class UnsupportedPacketFormat(Exception):
+    pass
+
+
 def _parse_packet_with_sender(listener_instance):
+    global listener_error
     raw_packet, sender = listener_instance.socket.recvfrom(2048)
     header = PacketHeader.from_buffer_copy(raw_packet)
+    if header.packet_format != EXPECTED_PACKET_FORMAT:
+        listener_error = f"{_FORMAT_ERROR_PREFIX}{header.packet_format}, need {EXPECTED_PACKET_FORMAT}"
+        if header.packet_format not in _warned_packet_formats:
+            _warned_packet_formats.add(header.packet_format)
+            logger.warning(
+                f"Received UDP format {header.packet_format}; set Telemetry Settings > "
+                f"UDP Format to {EXPECTED_PACKET_FORMAT} in game. Skipping these packets."
+            )
+        raise UnsupportedPacketFormat(header.packet_format)
+    if listener_error and listener_error.startswith(_FORMAT_ERROR_PREFIX):
+        listener_error = None
     key = (header.packet_format, header.packet_version, header.packet_id)
     return HEADER_FIELD_TO_PACKET_TYPE[key].unpack(raw_packet), sender
 
@@ -709,6 +743,7 @@ def telemetry_listener_worker(host: str, port: int, stop_event: threading.Event)
                                 "sessionTimeLeft": packet.session_time_left,
                                 "sessionDuration": packet.session_duration,
                                 "pitSpeedLimit": packet.pit_speed_limit,
+                                "dynamicRacingLine": getattr(packet, "dynamic_racing_line", 0),
                             }
                         )
 
@@ -1182,7 +1217,17 @@ def telemetry_listener_worker(host: str, port: int, stop_event: threading.Event)
                                                     sector_1_ms=saved_s1,
                                                     sector_2_ms=saved_s2,
                                                     sector_3_ms=saved_s3,
-                                                    tyre=TYRE_COMPOUND_MAP.get(participant.get("visualTyreCompound")),
+                                                    tyre=TYRE_COMPOUND_MAP.get(
+                                                        source_state["lap_start_tyres"][i]
+                                                        or participant.get("visualTyreCompound")
+                                                    ),
+                                                    # Session racing line is the local player's setting only.
+                                                    assists=_lap_assists(
+                                                        participant,
+                                                        source_state["session"].get("dynamicRacingLine")
+                                                        if i == getattr(packet.header, "player_car_index", None)
+                                                        else 0,
+                                                    ),
                                                     # Drop traces that did not start at the line (joined mid-lap).
                                                     trace=finished_trace if finished_trace and finished_trace[0][0] < LAP_TRACE_STEP_M else None,
                                                 )
@@ -1210,6 +1255,8 @@ def telemetry_listener_worker(host: str, port: int, stop_event: threading.Event)
 
                                 if current_s1 == 0:
                                     lap_owner_names[i] = current_display_name
+                                    # Sector 1 only, so an in-lap pit stop doesn't relabel the lap just driven.
+                                    source_state["lap_start_tyres"][i] = participant.get("visualTyreCompound")
 
                                 if lap_invalid:
                                     source_state["live_lap_invalid_flag"][i] = True
@@ -1301,6 +1348,12 @@ def telemetry_listener_worker(host: str, port: int, stop_event: threading.Event)
                                                 "vehicleFiaFlags": getattr(
                                                     status_data, "vehicle_fia_flags", 0
                                                 ),
+                                                "tractionControl": getattr(
+                                                    status_data, "traction_control", 0
+                                                ),
+                                                "antiLockBrakes": getattr(
+                                                    status_data, "anti_lock_brakes", 0
+                                                ),
                                             }
                                         )
                             logger.debug(
@@ -1311,7 +1364,7 @@ def telemetry_listener_worker(host: str, port: int, stop_event: threading.Event)
                         f"Received packet (type: {type(packet)}) but it has no 'header' attribute. Cannot determine packet_id."
                     )
 
-            except socket.timeout:
+            except (socket.timeout, UnsupportedPacketFormat):
                 continue
             except Exception as e:
                 if stop_event.is_set():

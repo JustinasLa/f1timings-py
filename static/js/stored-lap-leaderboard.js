@@ -5,6 +5,58 @@ let leaderboardOverallBestSectors = { s1: 0, s2: 0, s3: 0 };
 
 let leaderboardLiveLapSectors = {};
 
+const EVENT_DATE_STORAGE_KEY = 'leaderboardEventDate';
+let eventDateFilter = '';
+let lastEventDateOptionsHtml = null;
+
+function recordDate(record) {
+  return String(record.recorded_at || '').slice(0, 10);
+}
+
+function updateEventDateOptions(records) {
+  const select = document.getElementById('eventDateFilter');
+  if (!select) return;
+  const dates = new Set();
+  for (const record of records) {
+    if (record.is_pole_reference !== true && recordDate(record)) {
+      dates.add(recordDate(record));
+    }
+  }
+  if (eventDateFilter) {
+    dates.add(eventDateFilter);
+  }
+  let optionsHtml = '<option value="">All time</option>';
+  for (const date of Array.from(dates).sort().reverse()) {
+    optionsHtml += '<option value="' + escapeAttr(date) + '">' + escapeHtml(date) + '</option>';
+  }
+  if (optionsHtml !== lastEventDateOptionsHtml) {
+    select.innerHTML = optionsHtml;
+    lastEventDateOptionsHtml = optionsHtml;
+  }
+  select.value = eventDateFilter;
+}
+
+function filterRecordsByEventDate(records) {
+  if (!eventDateFilter) {
+    return records;
+  }
+  return records.filter(record =>
+    record.is_pole_reference === true || recordDate(record) === eventDateFilter
+  );
+}
+
+function initializeEventDateFilter() {
+  eventDateFilter = readStoredValue(EVENT_DATE_STORAGE_KEY) || '';
+  updateEventDateOptions([]);
+  const select = document.getElementById('eventDateFilter');
+  if (!select) return;
+  select.onchange = function () {
+    eventDateFilter = select.value;
+    writeStoredValue(EVENT_DATE_STORAGE_KEY, eventDateFilter);
+    loadDisplayData();
+  };
+}
+
 function formatTopSpeed(speedKph) {
   if (speedKph === null || speedKph === undefined) {
     return '—';
@@ -19,6 +71,15 @@ function formatTyreTag(tyre) {
   const name = String(tyre);
   return '<span class="tyre-tag tyre-' + escapeAttr(name.toLowerCase()) + '" title="' +
     escapeAttr(name) + '">' + escapeHtml(name.charAt(0)) + '</span>';
+}
+
+function formatAssistsTag(assists) {
+  if (!Array.isArray(assists) || assists.length === 0) {
+    return '';
+  }
+  const text = assists.join(' ');
+  return '<span class="assists-tag" title="Assists: ' + escapeAttr(text) + '">' +
+    escapeHtml(text) + '</span>';
 }
 
 function potentialMs(driver) {
@@ -41,6 +102,19 @@ function buildPotentialTitle(driver, lap) {
     return '';
   }
   return ' title="' + formatGap(lostMs / 1000) + ' left on the table vs best lap"';
+}
+
+function formatConsistency(driver) {
+  const times = (driver.all_laps || [])
+    .filter(lap => lap.is_valid !== false)
+    .map(lap => parseTimeToSeconds(lap.time))
+    .filter(isFinite);
+  if (times.length < 3) {
+    return '—';
+  }
+  const mean = times.reduce((sum, t) => sum + t, 0) / times.length;
+  const variance = times.reduce((sum, t) => sum + (t - mean) * (t - mean), 0) / times.length;
+  return '±' + formatGap(Math.sqrt(variance));
 }
 
 function formatLeaderboardSectorMs(milliseconds) {
@@ -170,9 +244,38 @@ function addLiveOnlyDrivers(drivers) {
   return mergedDrivers;
 }
 
+function liveDeltaMs(live, bestLap) {
+  if (bestLap.is_valid === false) {
+    return null;
+  }
+  const bestS1 = bestLap.sector_1_ms || 0;
+  const bestS2 = bestLap.sector_2_ms || 0;
+  if (live.s1 > 0 && live.s2 > 0 && bestS1 > 0 && bestS2 > 0) {
+    return live.s1 + live.s2 - bestS1 - bestS2;
+  }
+  if (live.s1 > 0 && bestS1 > 0) {
+    return live.s1 - bestS1;
+  }
+  return null;
+}
+
+function buildLiveDeltaHtml(live, bestLap) {
+  const deltaMs = liveDeltaMs(live, bestLap);
+  if (deltaMs === null) {
+    return '';
+  }
+  const deltaClass = deltaMs <= 0 ? 'delta-ahead' : 'delta-behind';
+  const sign = deltaMs <= 0 ? '-' : '+';
+  return '<span class="live-delta ' + deltaClass + '" title="Live delta to personal best">' +
+    sign + formatGap(Math.abs(deltaMs) / 1000) + '</span>';
+}
+
 function buildSectorBoxesHtml(driver, lap) {
   let display = leaderboardLiveLapSectors[driver.name];
-  if (!display) {
+  let deltaHtml = '';
+  if (display) {
+    deltaHtml = buildLiveDeltaHtml(display, lap);
+  } else {
     display = getDisplaySectors(driver, lap);
   }
 
@@ -186,7 +289,7 @@ function buildSectorBoxesHtml(driver, lap) {
   boxes += buildOneSectorBox(display.s1, personalBest.s1, overallBest.s1, display.isValid);
   boxes += buildOneSectorBox(display.s2, personalBest.s2, overallBest.s2, display.isValid);
   boxes += buildOneSectorBox(display.s3, personalBest.s3, overallBest.s3, display.isValid);
-  return '<div class="sector-box-row">' + boxes + '</div>';
+  return '<div class="sector-box-row">' + boxes + '</div>' + deltaHtml;
 }
 
 function recomputeBestSectors(rows) {
@@ -241,7 +344,8 @@ function buildDriversFromRecords(records) {
       sector_1_ms: record.sector_1_ms,
       sector_2_ms: record.sector_2_ms,
       sector_3_ms: record.sector_3_ms,
-      tyre: record.tyre
+      tyre: record.tyre,
+      assists: record.assists
     };
 
     const lapDetail = {
@@ -252,7 +356,8 @@ function buildDriversFromRecords(records) {
       sector_1_ms: record.sector_1_ms,
       sector_2_ms: record.sector_2_ms,
       sector_3_ms: record.sector_3_ms,
-      tyre: record.tyre
+      tyre: record.tyre,
+      assists: record.assists
     };
 
     if (!drivers[driverName]) {
@@ -354,7 +459,7 @@ function updateLeaderboard(drivers) {
     Object.keys(leaderboardDrivers).length;
 
   if (allRows.length === 0) {
-    const emptyRowsHtml = `<tr class="no-data-row"><td colspan="9">No timing data recorded for this track</td></tr>`;
+    const emptyRowsHtml = `<tr class="no-data-row"><td colspan="10">No timing data recorded for this track</td></tr>`;
     if (emptyRowsHtml !== lastLeaderboardRowsHtml) {
       tbody.innerHTML = emptyRowsHtml;
       lastLeaderboardRowsHtml = emptyRowsHtml;
@@ -423,11 +528,12 @@ function updateLeaderboard(drivers) {
         </div>
       </td>
       <td class="td-laps col-topspeed">${formatTopSpeed(lap.fastest_speed_kph)}</td>
-      <td class="col-bestlap">${lapTimeHtml}${formatTyreTag(lap.tyre)}</td>
+      <td class="col-bestlap">${lapTimeHtml}${formatTyreTag(lap.tyre)}${formatAssistsTag(lap.assists)}</td>
       <td class="td-laps col-potential"${buildPotentialTitle(driver, lap)}>${formatPotentialTime(driver)}</td>
       <td class="col-sectors sectors-cell">${buildSectorBoxesHtml(driver, lap)}</td>
       <td class="td-laps col-gap">${gap}</td>
       <td class="td-laps col-interval">${interval}</td>
+      <td class="td-laps col-consistency">${formatConsistency(driver)}</td>
       <td class="td-laps col-laps">${lapCountText}</td>
     </tr>`;
 
@@ -509,13 +615,52 @@ function buildDetailSectorBoxesHtml(driver, lap) {
   return '<div class="sector-box-row">' + boxes + '</div>';
 }
 
+function buildPbProgressionRow(driver) {
+  const times = [];
+  const laps = (driver.all_laps || []).slice().reverse();
+  for (const lap of laps) {
+    const seconds = parseTimeToSeconds(lap.time);
+    if (lap.is_valid !== false && isFinite(seconds)) {
+      times.push(seconds);
+    }
+  }
+  if (times.length < 2) {
+    return '';
+  }
+
+  const width = 200;
+  const height = 40;
+  const pad = 4;
+  const min = Math.min(...times);
+  const range = (Math.max(...times) - min) || 1;
+  let best = Infinity;
+  let points = '';
+  let dots = '';
+  for (let i = 0; i < times.length; i++) {
+    const x = (pad + i * (width - 2 * pad) / (times.length - 1)).toFixed(1);
+    const y = (pad + (times[i] - min) / range * (height - 2 * pad)).toFixed(1);
+    points += x + ',' + y + ' ';
+    if (times[i] < best) {
+      best = times[i];
+      dots += '<circle class="pb-chart-pb" cx="' + x + '" cy="' + y + '" r="2.5"><title>PB ' +
+        formatSeconds(times[i]) + '</title></circle>';
+    }
+  }
+
+  return `<tr class="pb-chart-row"><td colspan="9">
+      <svg class="pb-chart" width="${width}" height="${height}" role="img" aria-label="Valid lap times in order, personal bests highlighted">
+        <polyline class="pb-chart-line" points="${points.trim()}"></polyline>${dots}
+      </svg>
+    </td></tr>`;
+}
+
 function buildLapDetailRow(driver, fastestValidTime) {
   const laps = driver.recent_laps || [];
   if (laps.length === 0) {
-    return `<tr class="lap-detail-row"><td colspan="9">No recent laps</td></tr>`;
+    return `<tr class="lap-detail-row"><td colspan="10">No recent laps</td></tr>`;
   }
 
-  let rowsHtml = '';
+  let rowsHtml = buildPbProgressionRow(driver);
   for (let i = 0; i < laps.length; i++) {
     const lap = laps[i];
     const isValid = lap.is_valid !== false;
@@ -546,12 +691,13 @@ function buildLapDetailRow(driver, fastestValidTime) {
       <td class="lap-detail-when">${escapeHtml(clock)}</td>
       <td class="td-laps col-topspeed">${formatTopSpeed(lap.fastest_speed_kph)}</td>
       <td class="col-bestlap">
-        <span class="laptime-badge ${badgeClass}">${formatTime(lap.time)}</span>${formatTyreTag(lap.tyre)}
+        <span class="laptime-badge ${badgeClass}">${formatTime(lap.time)}</span>${formatTyreTag(lap.tyre)}${formatAssistsTag(lap.assists)}
       </td>
       <td class="td-laps col-potential"></td>
       <td class="col-sectors sectors-cell">${buildDetailSectorBoxesHtml(driver, lap)}</td>
       <td class="td-laps col-gap">${gap}</td>
       <td class="td-laps col-interval"></td>
+      <td class="td-laps col-consistency"></td>
       <td class="td-laps col-laps"></td>
     </tr>`;
   }
