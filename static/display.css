@@ -1035,3 +1035,23 @@ body.layout-resizing {
   color: var(--text-muted);
   font-style: italic;
 }
+
+.tyre-tag {
+  display: inline-block;
+  margin-left: 6px;
+  width: 16px;
+  height: 16px;
+  line-height: 13px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  font-size: 9px;
+  font-weight: 700;
+  text-align: center;
+  vertical-align: middle;
+  color: #8b949e;
+}
+.tyre-tag.tyre-soft { color: #e10600; }
+.tyre-tag.tyre-medium { color: #ffd12e; }
+.tyre-tag.tyre-hard { color: #f0f0f0; }
+.tyre-tag.tyre-inter { color: #3fb950; }
+.tyre-tag.tyre-wet { color: #2f81f7; }

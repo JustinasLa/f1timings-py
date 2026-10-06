@@ -137,6 +137,10 @@ WEATHER_MAP = {
 }
 
 
+# Car Status visualTyreCompound (F1 modern/classic); F2 codes fall through to None.
+TYRE_COMPOUND_MAP = {16: "Soft", 17: "Medium", 18: "Hard", 7: "Inter", 8: "Wet"}
+
+
 def get_weather_name(weather_id: int) -> str:
     return WEATHER_MAP.get(weather_id, "Unknown")
 
@@ -1169,6 +1173,7 @@ def telemetry_listener_worker(host: str, port: int, stop_event: threading.Event)
                                                     sector_1_ms=saved_s1,
                                                     sector_2_ms=saved_s2,
                                                     sector_3_ms=saved_s3,
+                                                    tyre=TYRE_COMPOUND_MAP.get(participant.get("visualTyreCompound")),
                                                 )
                                                 _submit_to_main_loop(
                                                     add_or_update_lap_time(
@@ -1255,6 +1260,11 @@ def telemetry_listener_worker(host: str, port: int, stop_event: threading.Event)
                                                 "tyreCompound": getattr(
                                                     status_data,
                                                     "actual_tyre_compound",
+                                                    0,
+                                                ),
+                                                "visualTyreCompound": getattr(
+                                                    status_data,
+                                                    "visual_tyre_compound",
                                                     0,
                                                 ),
                                                 "vehicleFiaFlags": getattr(

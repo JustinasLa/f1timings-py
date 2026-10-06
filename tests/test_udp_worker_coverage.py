@@ -439,6 +439,22 @@ def test_lap_saved_under_current_name_when_owner_unknown(monkeypatch, saved_laps
     assert track is None
 
 
+def test_lap_saved_with_visual_tyre_compound(monkeypatch, saved_laps):
+    status = SimpleNamespace(
+        header=SimpleNamespace(packet_id=7),
+        car_status_data=[SimpleNamespace(visual_tyre_compound=16)],
+    )
+    run_worker(monkeypatch, [participants("Hamilton"), lap(0), status, lap(75000)])
+
+    assert saved_laps[0][0].tyre == "Soft"
+
+
+def test_lap_saved_without_tyre_when_compound_unknown(monkeypatch, saved_laps):
+    run_worker(monkeypatch, [participants("Hamilton"), lap(0), lap(75000)])
+
+    assert saved_laps[0][0].tyre is None
+
+
 def test_personal_best_ghost_lap_is_not_saved(monkeypatch, saved_laps):
     run_worker(monkeypatch, [participants("Personal Best"), lap(0), lap(75000)])
 
@@ -536,6 +552,7 @@ def test_car_status_updates_known_participants_only(monkeypatch):
         tyres_wear_fl=3.0,
         tyres_wear_fr=4.0,
         actual_tyre_compound=16,
+        visual_tyre_compound=17,
         vehicle_fia_flags=3,
     )
     packet = SimpleNamespace(
@@ -555,6 +572,7 @@ def test_car_status_updates_known_participants_only(monkeypatch):
     assert first["drsAllowed"] == 1
     assert first["tyresWear"] == [1.0, 2.0, 3.0, 4.0]
     assert first["tyreCompound"] == 16
+    assert first["visualTyreCompound"] == 17
     assert first["vehicleFiaFlags"] == 3
     assert state()["participants"][1] == {}
     assert len(state()["participants"]) == 22
