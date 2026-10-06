@@ -46,6 +46,20 @@ test('formatTyreTag renders an escaped compound badge or nothing', () => {
   );
 });
 
+test('formatAssistsTag renders an escaped assists badge or nothing', () => {
+  const { window: w } = createDashboard();
+  assert.equal(w.formatAssistsTag(undefined), '');
+  assert.equal(w.formatAssistsTag([]), '');
+  assert.equal(
+    w.formatAssistsTag(['TC', 'RL']),
+    '<span class="assists-tag" title="Assists: TC RL">TC RL</span>'
+  );
+  assert.equal(
+    w.formatAssistsTag(['<x"']),
+    '<span class="assists-tag" title="Assists: &lt;x&quot;">&lt;x"</span>'
+  );
+});
+
 test('buildPotentialTitle shows time left on the table vs the best lap', () => {
   const { window: w } = createDashboard();
   const best = { best_sectors: { s1: 30000, s2: 30000, s3: 23456 } };
@@ -150,6 +164,29 @@ test('buildSectorBoxesHtml prefers live sectors and uses personal/overall bests'
   );
 });
 
+test('buildSectorBoxesHtml appends a live delta to the personal best lap', () => {
+  const env = createDashboard();
+  const w = env.window;
+  const best = { is_valid: true, sector_1_ms: 30000, sector_2_ms: 25000, sector_3_ms: 20000 };
+  env.set('leaderboardLiveLapSectors', {
+    Ahead: { s1: 29800, s2: 0, s3: 0, isValid: true },
+    Behind: { s1: 29800, s2: 25500, s3: 0, isValid: true },
+    Waiting: { s1: 0, s2: 0, s3: 0, isValid: true }
+  });
+
+  assert.match(
+    w.buildSectorBoxesHtml({ name: 'Ahead' }, best),
+    /<\/div><span class="live-delta delta-ahead" title="Live delta to personal best">-0\.200s<\/span>$/
+  );
+  assert.match(w.buildSectorBoxesHtml({ name: 'Behind' }, best), /delta-behind"[^>]*>\+0\.300s</);
+  assert.doesNotMatch(w.buildSectorBoxesHtml({ name: 'Waiting' }, best), /live-delta/);
+  assert.doesNotMatch(w.buildSectorBoxesHtml({ name: 'Ahead' }, { ...best, is_valid: false }), /live-delta/);
+  assert.doesNotMatch(w.buildSectorBoxesHtml({ name: 'Ahead' }, { is_valid: true }), /live-delta/);
+  assert.doesNotMatch(w.buildSectorBoxesHtml({ name: 'Stored' }, best), /live-delta/);
+
+  assert.equal(w.liveDeltaMs({ s1: 30000, s2: 1000 }, { sector_1_ms: 30000 }), 0, 'falls back to S1 when best has no S2');
+});
+
 test('recomputeBestSectors computes personal and overall bests', () => {
   const env = createDashboard();
   env.window.recomputeBestSectors([
@@ -188,7 +225,7 @@ test('buildDriversFromRecords groups laps, picks best lap and marks the fastest'
     rec('Ann', '1:25.000', { recorded_at: '2026-01-01T10:05:00', team: 'Scuderia Ferrari', sector_1_ms: 29000, sector_2_ms: 31000, sector_3_ms: 25000 }),
     rec('Ann', '1:28.000', { recorded_at: '2026-01-01T10:05:00' }),
     rec('Ann', '1:20.000', { is_valid: false, sector_1_ms: 1, recorded_at: '2026-01-01T09:00:00' }),
-    rec('Ann', '1:24.000', { team: undefined, tyre: 'Medium' }),
+    rec('Ann', '1:24.000', { team: undefined, tyre: 'Medium', assists: ['ABS'] }),
     { time: '1:40.000' },
     rec('Bob', '1:50.000', { is_valid: false }),
     rec('Bob', '1:45.000')
@@ -208,6 +245,8 @@ test('buildDriversFromRecords groups laps, picks best lap and marks the fastest'
   assert.equal(ann.recent_laps[4].recorded_at, '');
   assert.equal(ann.lap_times[0].tyre, 'Medium');
   assert.equal(ann.recent_laps[4].tyre, 'Medium');
+  assert.deepEqual(ann.lap_times[0].assists, ['ABS']);
+  assert.deepEqual(ann.recent_laps[4].assists, ['ABS']);
 
   assert.equal(drivers.Unknown.team, 'Unknown Team');
   assert.equal(drivers.Unknown.lap_times[0].is_fastest, false);
@@ -271,7 +310,8 @@ test('updateLeaderboard renders sorted rows with positions, gaps and badges', ()
   assert.equal(cells(r[0])[4], '1:30.000');
   assert.equal(cells(r[0])[6], '—');
   assert.equal(cells(r[0])[7], '—', 'leader has no interval');
-  assert.equal(cells(r[0])[8], '1');
+  assert.equal(cells(r[0])[8], '—', 'fewer than 3 valid laps has no consistency');
+  assert.equal(cells(r[0])[9], '1');
 
   assert.ok(r[1].querySelector('.td-pos').classList.contains('p2'));
   assert.equal(r[1].querySelector('.team-dot').style.background, 'rgb(220, 0, 0)');
@@ -294,6 +334,7 @@ test('updateLeaderboard renders sorted rows with positions, gaps and badges', ()
   assert.equal(live[6], '—');
   assert.equal(live[7], '—');
   assert.equal(live[8], '—');
+  assert.equal(live[9], '—');
   assert.deepEqual(r[4].className.trim().split(/\s+/), ['clickable-row']);
 
   // Invalid rows: no position, no gap, red sectors.
@@ -303,6 +344,25 @@ test('updateLeaderboard renders sorted rows with positions, gaps and badges', ()
   assert.equal(cells(r[5])[7], '—');
   assert.ok(r[5].querySelector('.laptime-badge').classList.contains('invalid'));
   assert.equal(r[5].querySelectorAll('.sector-invalid').length, 3);
+});
+
+test('formatConsistency is the std dev of valid, parseable stored laps', () => {
+  const { window: w } = createDashboard();
+  const lap = (time, is_valid = true) => ({ time, is_valid });
+  assert.equal(w.formatConsistency({}), '—');
+  assert.equal(w.formatConsistency({ all_laps: [lap('1:30.000'), lap('1:31.000'), lap('1:20.000', false), lap('bad')] }), '—');
+  assert.equal(w.formatConsistency({ all_laps: [lap('1:30.000'), lap('1:31.000'), lap('1:32.000'), lap('1:00.000', false)] }), '±0.816s');
+});
+
+test('updateLeaderboard renders the consistency column from stored laps', () => {
+  const env = createDashboard();
+  const w = env.window;
+  w.updateLeaderboard(w.buildDriversFromRecords([
+    rec('Ann', '1:30.000'), rec('Ann', '1:30.500'), rec('Ann', '1:31.000'), rec('Bob', '1:35.000')
+  ]));
+  const r = rows(env.document);
+  assert.equal(r[0].querySelector('.col-consistency').textContent, '±0.408s');
+  assert.equal(r[1].querySelector('.col-consistency').textContent, '—');
 });
 
 test('updateLeaderboard handles missing lap counts and unparseable fastest times', () => {
@@ -387,6 +447,32 @@ test('buildLapDetailRow and helpers cover empty and edge inputs', () => {
     '<div class="sector-box-row"><span class="sector-box sector-invalid">1.000</span>' +
       '<span class="sector-box sector-invalid">—</span><span class="sector-box sector-invalid">—</span></div>'
   );
+});
+
+test('expanded row shows a PB progression chart of valid laps in recorded order', () => {
+  const env = createDashboard();
+  const w = env.window;
+  w.updateLeaderboard(w.buildDriversFromRecords([
+    rec('Ann', '1:31.000', { recorded_at: '2026-01-01T10:00:00' }),
+    rec('Ann', '1:32.000', { recorded_at: '2026-01-01T10:01:00' }),
+    rec('Ann', '1:10.000', { recorded_at: '2026-01-01T10:02:00', is_valid: false }),
+    rec('Ann', '1:30.000', { recorded_at: '2026-01-01T10:03:00' }),
+    rec('Bob', '1:33.000', { recorded_at: '2026-01-01T10:00:00' })
+  ]));
+  w.toggleDriverExpand('Ann');
+  w.toggleDriverExpand('Bob');
+  const charts = env.document.querySelectorAll('#timingTableBody tr.pb-chart-row svg.pb-chart');
+  assert.equal(charts.length, 1, 'Bob has a single valid lap so no chart');
+  const points = charts[0].querySelector('polyline').getAttribute('points').split(' ');
+  assert.deepEqual(points, ['4.0,20.0', '100.0,36.0', '196.0,4.0']);
+  const pbs = Array.from(charts[0].querySelectorAll('circle.pb-chart-pb'));
+  assert.deepEqual(pbs.map((c) => c.textContent), ['PB 1:31.000', 'PB 1:30.000']);
+  assert.equal(pbs[1].getAttribute('cx'), '196.0');
+
+  assert.equal(w.buildPbProgressionRow({ name: 'A' }), '');
+  const flat = w.buildPbProgressionRow({ all_laps: [{ time: '1:30.000' }, { time: '1:30.000' }, { time: '' }] });
+  assert.match(flat, /points="4\.0,4\.0 196\.0,4\.0"/);
+  assert.equal((flat.match(/<circle/g) || []).length, 1, 'equal time is not a new PB');
 });
 
 test('delete button asks for confirmation and posts the delete', async () => {
