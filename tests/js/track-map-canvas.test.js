@@ -379,3 +379,26 @@ test('track select falls back to a title-cased label for tracks without a displa
   const option = env.document.querySelector('[data-track="zz_new_circuit"]');
   assert.equal(option.textContent, 'Zz New Circuit');
 });
+
+test('track canvas backing store follows devicePixelRatio', () => {
+  const env = withCanvas(createDashboard());
+  const canvas = env.document.getElementById('trackCanvas');
+  const setTransforms = () => env.ctx2d.calls.filter((c) => c.name === 'setTransform');
+  env.set('currentTrack', 'japan');
+  env.window.drawTrackOnCanvas({ points: SQUARE }, env.get('TRACK_DICTIONARY').japan);
+  assert.deepEqual([canvas.width, canvas.height], [1200, 800]);
+  assert.equal(setTransforms().length, 0);
+  env.set('trackData', { points: SQUARE, transformParams: { minX: 0, minY: 0, scale: 1, centerOffsetX: 0, centerOffsetY: 0 } });
+
+  // Browser zoom / moving to a HiDPI monitor is picked up on the next redraw.
+  env.window.devicePixelRatio = 2;
+  env.ctx2d.calls.length = 0;
+  env.window.redrawCompleteTrack();
+  assert.deepEqual([canvas.width, canvas.height], [2400, 1600]);
+  assert.deepEqual(setTransforms().map((c) => c.args), [[2, 0, 0, 2, 0, 0]]);
+  // Drawing stays in logical 1200x800 units.
+  assert.deepEqual(env.ctx2d.calls[1].args, [0, 0, 1200, 800]);
+
+  env.window.redrawCompleteTrack();
+  assert.equal(setTransforms().length, 1, 'no resize when unchanged');
+});
