@@ -193,12 +193,13 @@ def test_save_lap_record_creates_file_when_missing(tmp_path, monkeypatch):
     file_path = _track_file(tmp_path)
     assert not file_path.exists()
 
-    slr.save_lap_record(TRACK, "Lando", "McLaren", "1:11.500", True, 310.0, tyre="Soft")
+    slr.save_lap_record(TRACK, "Lando", "McLaren", "1:11.500", True, 310.0, tyre="Soft", assists=["TC"])
 
     records = slr.load_track_records(TRACK)
     assert len(records) == 1
     assert records[0]["driver"] == "Lando"
     assert records[0]["tyre"] == "Soft"
+    assert records[0]["assists"] == ["TC"]
 
 
 def test_load_track_records_propagates_os_error_other_than_missing(
@@ -244,7 +245,7 @@ def test_save_lap_record_stores_all_fields_and_appends(tmp_path, monkeypatch):
     assert first == {
         "driver": "Max", "team": "Red Bull", "time": "1:12.000", "is_valid": True,
         "fastest_speed_kph": 300, "sector_1_ms": 1, "sector_2_ms": 2, "sector_3_ms": 3,
-        "tyre": None,
+        "tyre": None, "assists": None,
     }
     assert recorded_at[:4].isdigit() and "T" in recorded_at
     assert second["driver"] == "Lando"
