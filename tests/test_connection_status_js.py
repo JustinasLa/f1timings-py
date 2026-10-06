@@ -98,6 +98,12 @@ def test_banner_markup_is_in_index_html():
     assert ".connection-banner" in (STATIC_DIR / "display.css").read_text(encoding="utf-8")
 
 
+def test_toast_containers_are_live_regions():
+    html = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+    assert '<div id="lap-toast-container" role="status" aria-live="polite">' in html
+    assert '<div id="toast-container" role="status" aria-live="polite">' in html
+
+
 def test_websocket_open_switches_to_server_track_without_posting_or_double_fetch():
     out = _run("""
 serverTrack = "Monaco";
