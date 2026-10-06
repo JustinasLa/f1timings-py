@@ -422,7 +422,7 @@ function traceDrivers() {
 
 function overlayStrokes(env) {
   return env.ctx2d.calls
-    .filter((c) => c.name === 'stroke' && ['#2ecc71', '#e74c3c'].includes(c.state.strokeStyle))
+    .filter((c) => c.name === 'stroke' && c.state.lineWidth === 5 && ['#2ecc71', '#e74c3c'].includes(c.state.strokeStyle))
     .map((c) => c.state.strokeStyle);
 }
 
@@ -455,6 +455,7 @@ test('expanded driver colours the map where they gain or lose against the leader
   assert.deepEqual(overlayStrokes(env), ['#2ecc71', '#e74c3c', '#e74c3c']);
   const labels = env.ctx2d.calls.filter((c) => c.name === 'fillText').map((c) => c.args[0]);
   assert.ok(labels.includes('Lewis vs Max: green gains, red loses'));
+  assert.equal(env.document.getElementById('traceChart').hidden, false);
 
   // Cached per comparison; recomputed when the track geometry changes.
   w.redrawCompleteTrack();

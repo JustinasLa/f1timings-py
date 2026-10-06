@@ -289,6 +289,7 @@ function redrawCompleteTrack() {
   const canvasPoints = buildTrackCanvasPoints(trackData, params, trackData.transformParams);
   strokeTrackOutline(canvasPoints);
   strokeGainLossOverlay(canvasPoints);
+  drawLapTraceChart(findTraceComparison());
 
   drawTrackMarkers();
 }
