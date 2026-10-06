@@ -7,6 +7,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     },
     () => initializeColumnSettings(),
+    () => initializeEventDateFilter(),
     () => initializeLayoutDivider(),
     () => initializeWebSocket(),
     () => loadCurrentTrack(),

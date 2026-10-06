@@ -267,6 +267,34 @@ body.layout-resizing {
   font-size: 10px;
   text-decoration: none;
 }
+.event-date-filter {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: 4px;
+  font-size: 10px;
+}
+.qr-panel summary {
+  cursor: pointer;
+  list-style: none;
+}
+.qr-panel summary::-webkit-details-marker {
+  display: none;
+}
+.qr-panel-body {
+  position: absolute;
+  right: 0;
+  top: 28px;
+  z-index: 20;
+  background: #fff;
+  color: #000;
+  border-radius: 6px;
+  padding: 8px;
+  text-align: center;
+}
+.qr-panel-body img {
+  display: block;
+}
 .export-csv-link:hover {
   border-color: var(--blue);
   color: var(--blue);

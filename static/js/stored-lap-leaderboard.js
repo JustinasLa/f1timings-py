@@ -5,6 +5,58 @@ let leaderboardOverallBestSectors = { s1: 0, s2: 0, s3: 0 };
 
 let leaderboardLiveLapSectors = {};
 
+const EVENT_DATE_STORAGE_KEY = 'leaderboardEventDate';
+let eventDateFilter = '';
+let lastEventDateOptionsHtml = null;
+
+function recordDate(record) {
+  return String(record.recorded_at || '').slice(0, 10);
+}
+
+function updateEventDateOptions(records) {
+  const select = document.getElementById('eventDateFilter');
+  if (!select) return;
+  const dates = new Set();
+  for (const record of records) {
+    if (record.is_pole_reference !== true && recordDate(record)) {
+      dates.add(recordDate(record));
+    }
+  }
+  if (eventDateFilter) {
+    dates.add(eventDateFilter);
+  }
+  let optionsHtml = '<option value="">All time</option>';
+  for (const date of Array.from(dates).sort().reverse()) {
+    optionsHtml += '<option value="' + escapeAttr(date) + '">' + escapeHtml(date) + '</option>';
+  }
+  if (optionsHtml !== lastEventDateOptionsHtml) {
+    select.innerHTML = optionsHtml;
+    lastEventDateOptionsHtml = optionsHtml;
+  }
+  select.value = eventDateFilter;
+}
+
+function filterRecordsByEventDate(records) {
+  if (!eventDateFilter) {
+    return records;
+  }
+  return records.filter(record =>
+    record.is_pole_reference === true || recordDate(record) === eventDateFilter
+  );
+}
+
+function initializeEventDateFilter() {
+  eventDateFilter = readStoredValue(EVENT_DATE_STORAGE_KEY) || '';
+  updateEventDateOptions([]);
+  const select = document.getElementById('eventDateFilter');
+  if (!select) return;
+  select.onchange = function () {
+    eventDateFilter = select.value;
+    writeStoredValue(EVENT_DATE_STORAGE_KEY, eventDateFilter);
+    loadDisplayData();
+  };
+}
+
 function formatTopSpeed(speedKph) {
   if (speedKph === null || speedKph === undefined) {
     return '—';

@@ -3,7 +3,8 @@ import csv
 import io
 import logging
 from typing import Dict, Optional
-from fastapi import APIRouter, HTTPException, Response
+import segno
+from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel
 
 from app.models.data_models import (
@@ -34,7 +35,7 @@ from app.services.saved_lap_records import (
     delete_lap_record,
     make_safe_file_name,
 )
-from app.api.udp_telemetry_routes import get_live_driver_data_for_api
+from app.api.udp_telemetry_routes import get_live_driver_data_for_api, get_local_ip
 
 logger = logging.getLogger(__name__)
 
@@ -105,6 +106,19 @@ async def get_track_records_endpoint(track: str = None):
         lap_times = []
 
     return {"track": track_name, "lap_times": lap_times}
+
+
+@router.get("/api/qr.svg", tags=["Display"])
+async def get_dashboard_qr_endpoint(request: Request):
+    # Phones can't resolve "localhost", so point them at the LAN address.
+    netloc = get_local_ip()
+    if request.url.port:
+        netloc += f":{request.url.port}"
+    buffer = io.BytesIO()
+    segno.make(f"{request.url.scheme}://{netloc}/").save(
+        buffer, kind="svg", scale=4, border=2, xmldecl=False
+    )
+    return Response(content=buffer.getvalue(), media_type="image/svg+xml")
 
 
 CSV_EXPORT_COLUMNS = [

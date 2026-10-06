@@ -584,3 +584,52 @@ test('updateFastestLapPill shows the fastest lap or hides', () => {
   w.updateFastestLapPill({ A: { lap_times: [] } });
   assert.equal(pill.style.display, 'none');
 });
+
+function dateOptions(document) {
+  return Array.from(document.querySelectorAll('#eventDateFilter option')).map((o) => o.value);
+}
+
+test('event date filter lists distinct dates, newest first, and filters records', () => {
+  const env = createDashboard();
+  const w = env.window;
+  const records = [
+    rec('Ann', '1:30.000', { recorded_at: '2026-01-01T10:00:00' }),
+    rec('Bob', '1:31.000', { recorded_at: '2026-02-01T10:00:00' }),
+    rec('Cat', '1:32.000'),
+    { driver: 'Pole', time: '1:20.000', is_pole_reference: true, recorded_at: '2024-01-01T00:00:00' }
+  ];
+  w.initializeEventDateFilter();
+  w.updateEventDateOptions(records);
+  assert.deepEqual(dateOptions(env.document), ['', '2026-02-01', '2026-01-01']);
+  assert.equal(w.filterRecordsByEventDate(records), records);
+
+  const select = env.document.getElementById('eventDateFilter');
+  let reloads = 0;
+  env.set('loadDisplayData', () => { reloads++; });
+  select.value = '2026-01-01';
+  select.dispatchEvent(new w.Event('change'));
+  assert.equal(reloads, 1);
+  assert.equal(w.localStorage.getItem('leaderboardEventDate'), '2026-01-01');
+  assert.deepEqual(w.filterRecordsByEventDate(records).map((r) => r.driver), ['Ann', 'Pole']);
+
+  // An unchanged option list keeps the existing <option> nodes.
+  const first = select.options[1];
+  w.updateEventDateOptions(records);
+  assert.equal(select.options[1], first);
+  assert.equal(select.value, '2026-01-01');
+});
+
+test('a saved event date is restored and kept even with no laps on that day', () => {
+  const env = createDashboard();
+  const w = env.window;
+  w.localStorage.setItem('leaderboardEventDate', '2025-05-05');
+  w.initializeEventDateFilter();
+  assert.deepEqual(dateOptions(env.document), ['', '2025-05-05']);
+  assert.equal(env.document.getElementById('eventDateFilter').value, '2025-05-05');
+  assert.deepEqual(plain(w.filterRecordsByEventDate([rec('Ann', '1:30.000')])), []);
+});
+
+test('event date filter is a no-op without the select element', () => {
+  const env = createDashboard({ html: '<div></div>' });
+  assert.doesNotThrow(() => env.window.initializeEventDateFilter());
+});
