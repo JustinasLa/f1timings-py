@@ -1,3 +1,13 @@
+"""Build track_data/<track>.json from FastF1 qualifying telemetry.
+
+Run from the repo root (needs `pip install fastf1`):
+
+    python scripts/fetch_fastf1_tracks.py            # every track in TRACKS
+    python scripts/fetch_fastf1_tracks.py monaco     # one track
+
+Each track is calibrated against geojson/<track>.geojson. Exits non-zero on
+an unknown track name or if any track fails to build.
+"""
 import json
 import math
 import os
@@ -706,16 +716,22 @@ def build_one_track(track_name, season, event, session):
 
 
 def main():
+    only_track = None
+    if len(sys.argv) > 1:
+        only_track = sys.argv[1].lower()
+        known_tracks = [name for name, _, _ in TRACKS]
+        if only_track not in known_tracks:
+            sys.exit(
+                "Unknown track '" + only_track + "'. Choose one of: "
+                + ", ".join(known_tracks)
+            )
+
     if not os.path.exists(CACHE_DIR):
         os.makedirs(CACHE_DIR)
     if not os.path.exists(OUTPUT_DIR):
         os.makedirs(OUTPUT_DIR)
 
     fastf1.Cache.enable_cache(CACHE_DIR)
-
-    only_track = None
-    if len(sys.argv) > 1:
-        only_track = sys.argv[1].lower()
 
     failures = []
     for track_name, season, event in TRACKS:
@@ -732,6 +748,7 @@ def main():
     print("")
     if failures:
         print("Finished with failures: " + ", ".join(failures))
+        sys.exit(1)
     else:
         print("Finished: all requested tracks built.")
 

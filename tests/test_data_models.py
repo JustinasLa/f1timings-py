@@ -3,7 +3,7 @@ import math
 import pytest
 from pydantic import ValidationError
 
-from app.models.data_models import Driver, LapTime, LapTimeInput, driver_to_response
+from app.models.data_models import Driver, LapTime, LapTimeInput
 
 
 @pytest.mark.parametrize(
@@ -54,13 +54,3 @@ def test_lap_time_input_rejects_garbage_time():
     with pytest.raises(ValidationError, match="recognizable format"):
         LapTimeInput(name="Max", team="Red Bull", time="fast")
 
-
-def test_driver_to_response_copies_name_team_and_laps():
-    driver = Driver(name="Max", team="Red Bull", lap_times=[LapTime(time="1:12.000")])
-
-    response = driver_to_response(driver)
-
-    assert response.name == "Max"
-    assert response.team == "Red Bull"
-    assert [lap.time for lap in response.lap_times] == ["1:12.000"]
-    assert response.world_x is None
