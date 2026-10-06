@@ -1,4 +1,4 @@
-const COLUMN_SETTING_NAMES = ["pos", "topspeed", "bestlap", "potential", "sectors", "gap", "laps"];
+const COLUMN_SETTING_NAMES = ["pos", "topspeed", "bestlap", "potential", "sectors", "gap", "interval", "laps"];
 const COLUMN_SETTING_STORAGE_KEY = "leaderboardColumns";
 
 let columnVisibility = {
@@ -8,6 +8,7 @@ let columnVisibility = {
   potential: false,
   sectors: true,
   gap: true,
+  interval: true,
   laps: true
 };
 

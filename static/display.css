@@ -256,6 +256,20 @@ body.layout-resizing {
 
 .column-settings {
   position: relative;
+  display: flex;
+  gap: 6px;
+}
+.export-csv-link {
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: 4px;
+  padding: 3px 6px;
+  font-size: 10px;
+  text-decoration: none;
+}
+.export-csv-link:hover {
+  border-color: var(--blue);
+  color: var(--blue);
 }
 .column-settings-toggle {
   background: transparent;
@@ -361,6 +375,7 @@ body.layout-resizing {
 .timing-table.hide-col-potential .col-potential,
 .timing-table.hide-col-sectors .col-sectors,
 .timing-table.hide-col-gap .col-gap,
+.timing-table.hide-col-interval .col-interval,
 .timing-table.hide-col-laps .col-laps {
   display: none;
 }
@@ -1034,4 +1049,18 @@ body.layout-resizing {
   font-size: 12px;
   color: var(--text-muted);
   font-style: italic;
+}
+
+/* The column switches hide their real checkbox, so show keyboard focus on the track. */
+.column-switch input:focus-visible + .column-switch-track {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+/* Shorten rather than drop motion: toasts are removed on animationend. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
