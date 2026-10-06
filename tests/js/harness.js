@@ -107,7 +107,7 @@ function makeFakeContext2d() {
     calls.push({ name, args, state: { ...state } });
   };
   const target = { calls };
-  for (const name of ['clearRect', 'beginPath', 'moveTo', 'lineTo', 'stroke', 'fill', 'arc', 'fillText']) {
+  for (const name of ['clearRect', 'beginPath', 'moveTo', 'lineTo', 'stroke', 'fill', 'arc', 'fillText', 'setTransform']) {
     target[name] = record(name);
   }
   return new Proxy(target, {

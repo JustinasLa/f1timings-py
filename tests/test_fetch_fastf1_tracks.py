@@ -823,7 +823,10 @@ def test_main_builds_all_tracks_and_reports_failures(script, monkeypatch, tmp_pa
 
     monkeypatch.setattr(script, "build_one_track", fake_build)
 
-    script.main()
+    with pytest.raises(SystemExit) as exit_info:
+        script.main()
+
+    assert exit_info.value.code == 1
 
     assert built == [name for name, _, _ in script.TRACKS]
     assert (tmp_path / "track_data" / "keep.json").read_text(encoding="utf-8") == "{}"
@@ -834,15 +837,33 @@ def test_main_builds_all_tracks_and_reports_failures(script, monkeypatch, tmp_pa
     assert "all requested tracks built" not in out
 
 
+def test_main_rejects_unknown_track_before_touching_disk(script, monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    fake_fastf1 = _make_fake_fastf1()
+    monkeypatch.setattr(script, "fastf1", fake_fastf1)
+    monkeypatch.setattr(sys, "argv", ["fetch_fastf1_tracks.py", "Not_A_Track"])
+
+    with pytest.raises(SystemExit) as exit_info:
+        script.main()
+
+    message = str(exit_info.value.code)
+    assert message.startswith("Unknown track 'not_a_track'. Choose one of: abu_dhabi,")
+    assert "monaco" in message
+    assert fake_fastf1.calls["enable_cache"] == []
+    assert list(tmp_path.iterdir()) == []
+
+
 def test_running_as_script_invokes_main(monkeypatch, tmp_path, capsys):
     monkeypatch.chdir(tmp_path)
     fake_fastf1 = _install_fakes(monkeypatch)
-    monkeypatch.setattr(sys, "argv", ["fetch_fastf1_tracks.py", "not_a_track"])
+    monkeypatch.setattr(sys, "argv", ["fetch_fastf1_tracks.py", "monaco"])
 
-    runpy.run_path(SCRIPT_PATH, run_name="__main__")
+    with pytest.raises(SystemExit) as exit_info:
+        runpy.run_path(SCRIPT_PATH, run_name="__main__")
 
+    assert exit_info.value.code == 1
     assert fake_fastf1.calls["enable_cache"] == ["fastf1_cache"]
-    assert fake_fastf1.calls["get_session"] == []
+    assert fake_fastf1.calls["get_session"] == [(2024, "Monaco", "Q")]
     assert (tmp_path / "fastf1_cache").is_dir()
     assert (tmp_path / "track_data").is_dir()
-    assert "Finished: all requested tracks built." in capsys.readouterr().out
+    assert "Finished with failures: monaco" in capsys.readouterr().out

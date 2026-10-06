@@ -1,4 +1,3 @@
-import csv
 import json
 import os
 import logging
@@ -339,10 +338,6 @@ class TrackService:
 
         logger.warning(f"No pre-built track data for '{matched_track_name}'")
         return None
-
-    def clear_cache(self):
-        self.track_cache.clear()
-        logger.debug("Track data cache cleared")
 
 
 track_service = TrackService()

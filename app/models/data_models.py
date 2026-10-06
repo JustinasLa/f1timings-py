@@ -158,11 +158,3 @@ class DriverResponse(BaseModel):
 class TrackNameResponse(BaseModel):
 
     name: str = Field(..., description="Name of the current track")
-
-
-def driver_to_response(driver: Driver) -> DriverResponse:
-    return DriverResponse(
-        name=driver.name,
-        team=driver.team,
-        lap_times=list(driver.lap_times),
-    )

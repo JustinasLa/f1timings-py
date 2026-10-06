@@ -21,20 +21,26 @@ function formatTyreTag(tyre) {
     escapeAttr(name) + '">' + escapeHtml(name.charAt(0)) + '</span>';
 }
 
+function potentialMs(driver) {
+  const best = driver.best_sectors;
+  if (!best || !(best.s1 > 0 && best.s2 > 0 && best.s3 > 0)) {
+    return 0;
+  }
+  return best.s1 + best.s2 + best.s3;
+}
+
 function formatPotentialTime(driver) {
-  let best = driver.best_sectors;
-  if (!best) {
-    return '—';
-  }
+  const totalMs = potentialMs(driver);
+  return totalMs ? formatSeconds(totalMs / 1000) : '—';
+}
 
-  const haveAllSectors = best.s1 > 0 && best.s2 > 0 && best.s3 > 0;
-  if (!haveAllSectors) {
-    return '—';
+function buildPotentialTitle(driver, lap) {
+  const totalMs = potentialMs(driver);
+  const lostMs = Math.round(parseTimeToSeconds(lap.time) * 1000) - totalMs;
+  if (!totalMs || !lap.is_valid || !isFinite(lostMs) || lostMs <= 0) {
+    return '';
   }
-
-  const totalMs = best.s1 + best.s2 + best.s3;
-  const totalSeconds = totalMs / 1000;
-  return formatSeconds(totalSeconds);
+  return ' title="' + formatGap(lostMs / 1000) + ' left on the table vs best lap"';
 }
 
 function formatLeaderboardSectorMs(milliseconds) {
@@ -348,7 +354,7 @@ function updateLeaderboard(drivers) {
     Object.keys(leaderboardDrivers).length;
 
   if (allRows.length === 0) {
-    const emptyRowsHtml = `<tr class="no-data-row"><td colspan="8">No timing data recorded for this track</td></tr>`;
+    const emptyRowsHtml = `<tr class="no-data-row"><td colspan="9">No timing data recorded for this track</td></tr>`;
     if (emptyRowsHtml !== lastLeaderboardRowsHtml) {
       tbody.innerHTML = emptyRowsHtml;
       lastLeaderboardRowsHtml = emptyRowsHtml;
@@ -369,6 +375,7 @@ function updateLeaderboard(drivers) {
     allRows.find(r => r.lap.is_valid)?.lap.time
   );
 
+  let previousValidTime = Infinity;
   let rowsHtml = '';
   for (let i = 0; i < allRows.length; i++) {
     const driver = allRows[i].driver;
@@ -386,6 +393,13 @@ function updateLeaderboard(drivers) {
     let gap = (!lap.is_valid || i === 0 || !isFinite(fastestValidTime))
       ? '—'
       : '+' + formatGap(lapSec - fastestValidTime);
+    let interval = '—';
+    if (lap.is_valid && !isLiveOnly && isFinite(lapSec)) {
+      if (isFinite(previousValidTime)) {
+        interval = '+' + formatGap(lapSec - previousValidTime);
+      }
+      previousValidTime = lapSec;
+    }
     let lapCountText = String(driver.lap_count || 1);
     let rowStateClass = !lap.is_valid ? 'invalid-row' : lap.is_fastest ? 'fastest-row' : '';
 
@@ -410,9 +424,10 @@ function updateLeaderboard(drivers) {
       </td>
       <td class="td-laps col-topspeed">${formatTopSpeed(lap.fastest_speed_kph)}</td>
       <td class="col-bestlap">${lapTimeHtml}${formatTyreTag(lap.tyre)}</td>
-      <td class="td-laps col-potential">${formatPotentialTime(driver)}</td>
+      <td class="td-laps col-potential"${buildPotentialTitle(driver, lap)}>${formatPotentialTime(driver)}</td>
       <td class="col-sectors sectors-cell">${buildSectorBoxesHtml(driver, lap)}</td>
       <td class="td-laps col-gap">${gap}</td>
+      <td class="td-laps col-interval">${interval}</td>
       <td class="td-laps col-laps">${lapCountText}</td>
     </tr>`;
 
@@ -497,7 +512,7 @@ function buildDetailSectorBoxesHtml(driver, lap) {
 function buildLapDetailRow(driver, fastestValidTime) {
   const laps = driver.recent_laps || [];
   if (laps.length === 0) {
-    return `<tr class="lap-detail-row"><td colspan="8">No recent laps</td></tr>`;
+    return `<tr class="lap-detail-row"><td colspan="9">No recent laps</td></tr>`;
   }
 
   let rowsHtml = '';
@@ -536,6 +551,7 @@ function buildLapDetailRow(driver, fastestValidTime) {
       <td class="td-laps col-potential"></td>
       <td class="col-sectors sectors-cell">${buildDetailSectorBoxesHtml(driver, lap)}</td>
       <td class="td-laps col-gap">${gap}</td>
+      <td class="td-laps col-interval"></td>
       <td class="td-laps col-laps"></td>
     </tr>`;
   }

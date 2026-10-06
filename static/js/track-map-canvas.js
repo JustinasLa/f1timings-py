@@ -1,3 +1,8 @@
+// Logical drawing size; the backing store is scaled by devicePixelRatio so
+// the map stays sharp on HiDPI screens.
+const TRACK_CANVAS_WIDTH = 1200;
+const TRACK_CANVAS_HEIGHT = 800;
+
 async function loadCurrentTrack() {
   try {
     const r = await fetch('/api/track');
@@ -192,9 +197,9 @@ function computeTrackTransform(td, params) {
   if (rangeX <= 0) rangeX = 1;
   if (rangeY <= 0) rangeY = 1;
 
-  const scale = Math.min((canvas.width - pad * 2) / rangeX, (canvas.height - pad * 2) / rangeY);
-  const centerOffsetX = (canvas.width - rangeX * scale) / 2;
-  const centerOffsetY = (canvas.height - rangeY * scale) / 2;
+  const scale = Math.min((TRACK_CANVAS_WIDTH - pad * 2) / rangeX, (TRACK_CANVAS_HEIGHT - pad * 2) / rangeY);
+  const centerOffsetX = (TRACK_CANVAS_WIDTH - rangeX * scale) / 2;
+  const centerOffsetY = (TRACK_CANVAS_HEIGHT - rangeY * scale) / 2;
   return { minX: minX, minY: minY, scale: scale, centerOffsetX: centerOffsetX, centerOffsetY: centerOffsetY };
 }
 
@@ -241,10 +246,22 @@ function strokeTrackOutline(canvasPoints) {
   ctx.stroke();
 }
 
+// Re-checked on every redraw so browser zoom or moving to another monitor
+// (both change devicePixelRatio) is picked up on the next telemetry tick.
+function matchCanvasToDevicePixels() {
+  const dpr = window.devicePixelRatio;
+  const width = Math.round(TRACK_CANVAS_WIDTH * dpr);
+  if (canvas.width === width) return;
+  canvas.width = width;
+  canvas.height = Math.round(TRACK_CANVAS_HEIGHT * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
 function drawTrackOnCanvas(td, params) {
   if (td.points.length < 2) return;
 
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  matchCanvasToDevicePixels();
+  ctx.clearRect(0, 0, TRACK_CANVAS_WIDTH, TRACK_CANVAS_HEIGHT);
 
   const transform = computeTrackTransform(td, params);
   td.transformParams = transform;
@@ -264,7 +281,8 @@ function redrawCompleteTrack() {
   const params = TRACK_DICTIONARY[currentTrack.toLowerCase()];
   if (!params) return;
 
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  matchCanvasToDevicePixels();
+  ctx.clearRect(0, 0, TRACK_CANVAS_WIDTH, TRACK_CANVAS_HEIGHT);
 
   drawPitlane();
 
