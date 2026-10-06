@@ -21,6 +21,15 @@ function formatTyreTag(tyre) {
     escapeAttr(name) + '">' + escapeHtml(name.charAt(0)) + '</span>';
 }
 
+function formatAssistsTag(assists) {
+  if (!Array.isArray(assists) || assists.length === 0) {
+    return '';
+  }
+  const text = assists.join(' ');
+  return '<span class="assists-tag" title="Assists: ' + escapeAttr(text) + '">' +
+    escapeHtml(text) + '</span>';
+}
+
 function potentialMs(driver) {
   const best = driver.best_sectors;
   if (!best || !(best.s1 > 0 && best.s2 > 0 && best.s3 > 0)) {
@@ -270,7 +279,8 @@ function buildDriversFromRecords(records) {
       sector_1_ms: record.sector_1_ms,
       sector_2_ms: record.sector_2_ms,
       sector_3_ms: record.sector_3_ms,
-      tyre: record.tyre
+      tyre: record.tyre,
+      assists: record.assists
     };
 
     const lapDetail = {
@@ -281,7 +291,8 @@ function buildDriversFromRecords(records) {
       sector_1_ms: record.sector_1_ms,
       sector_2_ms: record.sector_2_ms,
       sector_3_ms: record.sector_3_ms,
-      tyre: record.tyre
+      tyre: record.tyre,
+      assists: record.assists
     };
 
     if (!drivers[driverName]) {
@@ -452,7 +463,7 @@ function updateLeaderboard(drivers) {
         </div>
       </td>
       <td class="td-laps col-topspeed">${formatTopSpeed(lap.fastest_speed_kph)}</td>
-      <td class="col-bestlap">${lapTimeHtml}${formatTyreTag(lap.tyre)}</td>
+      <td class="col-bestlap">${lapTimeHtml}${formatTyreTag(lap.tyre)}${formatAssistsTag(lap.assists)}</td>
       <td class="td-laps col-potential"${buildPotentialTitle(driver, lap)}>${formatPotentialTime(driver)}</td>
       <td class="col-sectors sectors-cell">${buildSectorBoxesHtml(driver, lap)}</td>
       <td class="td-laps col-gap">${gap}</td>
@@ -575,7 +586,7 @@ function buildLapDetailRow(driver, fastestValidTime) {
       <td class="lap-detail-when">${escapeHtml(clock)}</td>
       <td class="td-laps col-topspeed">${formatTopSpeed(lap.fastest_speed_kph)}</td>
       <td class="col-bestlap">
-        <span class="laptime-badge ${badgeClass}">${formatTime(lap.time)}</span>${formatTyreTag(lap.tyre)}
+        <span class="laptime-badge ${badgeClass}">${formatTime(lap.time)}</span>${formatTyreTag(lap.tyre)}${formatAssistsTag(lap.assists)}
       </td>
       <td class="td-laps col-potential"></td>
       <td class="col-sectors sectors-cell">${buildDetailSectorBoxesHtml(driver, lap)}</td>

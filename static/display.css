@@ -1079,6 +1079,17 @@ body.layout-resizing {
 .tyre-tag.tyre-hard { color: #f0f0f0; }
 .tyre-tag.tyre-inter { color: #3fb950; }
 .tyre-tag.tyre-wet { color: #2f81f7; }
+.assists-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 4px;
+  border: 1px solid #d29922;
+  border-radius: 3px;
+  font-size: 9px;
+  font-weight: 700;
+  vertical-align: middle;
+  color: #d29922;
+}
 
 /* The column switches hide their real checkbox, so show keyboard focus on the track. */
 .column-switch input:focus-visible + .column-switch-track {
