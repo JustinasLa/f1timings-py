@@ -179,9 +179,38 @@ function addLiveOnlyDrivers(drivers) {
   return mergedDrivers;
 }
 
+function liveDeltaMs(live, bestLap) {
+  if (bestLap.is_valid === false) {
+    return null;
+  }
+  const bestS1 = bestLap.sector_1_ms || 0;
+  const bestS2 = bestLap.sector_2_ms || 0;
+  if (live.s1 > 0 && live.s2 > 0 && bestS1 > 0 && bestS2 > 0) {
+    return live.s1 + live.s2 - bestS1 - bestS2;
+  }
+  if (live.s1 > 0 && bestS1 > 0) {
+    return live.s1 - bestS1;
+  }
+  return null;
+}
+
+function buildLiveDeltaHtml(live, bestLap) {
+  const deltaMs = liveDeltaMs(live, bestLap);
+  if (deltaMs === null) {
+    return '';
+  }
+  const deltaClass = deltaMs <= 0 ? 'delta-ahead' : 'delta-behind';
+  const sign = deltaMs <= 0 ? '-' : '+';
+  return '<span class="live-delta ' + deltaClass + '" title="Live delta to personal best">' +
+    sign + formatGap(Math.abs(deltaMs) / 1000) + '</span>';
+}
+
 function buildSectorBoxesHtml(driver, lap) {
   let display = leaderboardLiveLapSectors[driver.name];
-  if (!display) {
+  let deltaHtml = '';
+  if (display) {
+    deltaHtml = buildLiveDeltaHtml(display, lap);
+  } else {
     display = getDisplaySectors(driver, lap);
   }
 
@@ -195,7 +224,7 @@ function buildSectorBoxesHtml(driver, lap) {
   boxes += buildOneSectorBox(display.s1, personalBest.s1, overallBest.s1, display.isValid);
   boxes += buildOneSectorBox(display.s2, personalBest.s2, overallBest.s2, display.isValid);
   boxes += buildOneSectorBox(display.s3, personalBest.s3, overallBest.s3, display.isValid);
-  return '<div class="sector-box-row">' + boxes + '</div>';
+  return '<div class="sector-box-row">' + boxes + '</div>' + deltaHtml;
 }
 
 function recomputeBestSectors(rows) {
