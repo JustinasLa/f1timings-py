@@ -8,6 +8,7 @@ document.addEventListener("DOMContentLoaded", () => {
     },
     () => initializeColumnSettings(),
     () => initializeLayoutDivider(),
+    () => initializeKioskMode(),
     () => initializeWebSocket(),
     () => loadCurrentTrack(),
     () => loadTrackSelectOptions(),

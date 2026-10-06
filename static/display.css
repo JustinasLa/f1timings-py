@@ -1077,6 +1077,31 @@ body.layout-resizing {
   outline-offset: 2px;
 }
 
+/* Kiosk / TV mode (?kiosk=1): read-only, larger type, cursor hides when idle. */
+body.kiosk .udp-controls,
+body.kiosk .column-settings,
+body.kiosk .track-dropdown,
+body.kiosk .lap-delete-btn,
+body.kiosk .expand-toggle,
+body.kiosk .driver-alias-panel {
+  display: none;
+}
+body.kiosk .layout-divider {
+  pointer-events: none;
+}
+body.kiosk .session-header,
+body.kiosk .section-title,
+body.kiosk .timing-table,
+body.kiosk .track-header,
+body.kiosk .map-top-overlay,
+body.kiosk #toast-container {
+  zoom: 1.5;
+}
+body.kiosk-idle,
+body.kiosk-idle * {
+  cursor: none !important;
+}
+
 /* Shorten rather than drop motion: toasts are removed on animationend. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
