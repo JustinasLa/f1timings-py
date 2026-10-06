@@ -63,3 +63,37 @@ test('fetch failures are logged, not thrown', async () => {
   const env = await boot(() => jsonResponse({}, 500));
   assert.equal(env.logs.error[0][0], 'Error refreshing mobile view:');
 });
+
+test('a failed records request keeps the previous track title and rows together', async () => {
+  let track = 'monaco';
+  const env = await boot((url) => {
+    if (url === '/api/track') return jsonResponse({ name: track });
+    if (url === '/api/track/records?track=monaco') return jsonResponse({ lap_times: [{ driver: 'Ann', time: '1:12.000' }] });
+    return jsonResponse({}, 500);
+  });
+  track = 'spain';
+  env.clock.advance(3000);
+  await env.flush(20);
+
+  assert.equal(env.document.getElementById('sessionTitle').textContent, 'Monaco');
+  assert.equal(env.document.querySelector('#timingTableBody tr.clickable-row').dataset.driver, 'Ann');
+  assert.equal(env.get('currentTrack'), 'monaco');
+  assert.equal(env.logs.error[0][0], 'Error refreshing mobile view:');
+});
+
+test('a refresh still in flight is not overlapped by the next poll', async () => {
+  let release;
+  const env = await boot((url) => {
+    if (url === '/api/track') return new Promise((resolve) => { release = () => resolve(jsonResponse({})); });
+    throw new Error('unexpected ' + url);
+  });
+  env.clock.advance(3000);
+  await env.flush(20);
+  assert.equal(env.callsTo('/api/track').length, 1);
+
+  release();
+  await env.flush(20);
+  env.clock.advance(3000);
+  await env.flush(20);
+  assert.equal(env.callsTo('/api/track').length, 2);
+});
