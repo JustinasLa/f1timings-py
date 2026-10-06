@@ -254,11 +254,16 @@ test('updateLeaderboard renders sorted rows with positions, gaps and badges', ()
   assert.equal(cells(r[0])[2], '310 km/h');
   assert.equal(cells(r[0])[4], '1:30.000');
   assert.equal(cells(r[0])[6], '—');
-  assert.equal(cells(r[0])[7], '1');
+  assert.equal(cells(r[0])[7], '—', 'leader has no interval');
+  assert.equal(cells(r[0])[8], '1');
 
   assert.ok(r[1].querySelector('.td-pos').classList.contains('p2'));
   assert.equal(r[1].querySelector('.team-dot').style.background, 'rgb(220, 0, 0)');
   assert.equal(cells(r[1])[6], '+0.500s');
+  assert.equal(cells(r[1])[7], '+0.500s');
+  assert.equal(cells(r[2])[6], '+1.000s');
+  assert.equal(cells(r[2])[7], '+0.500s', 'interval is to the car ahead, not the leader');
+  assert.equal(cells(r[3])[7], '+1.000s');
   assert.ok(r[1].querySelector('.laptime-badge').classList.contains('normal'));
   assert.ok(r[2].querySelector('.td-pos').classList.contains('p3'));
   assert.equal(r[3].querySelector('.td-pos').className.trim(), 'td-pos col-pos');
@@ -272,12 +277,14 @@ test('updateLeaderboard renders sorted rows with positions, gaps and badges', ()
   assert.equal(live[3], '—');
   assert.equal(live[6], '—');
   assert.equal(live[7], '—');
+  assert.equal(live[8], '—');
   assert.deepEqual(r[4].className.trim().split(/\s+/), ['clickable-row']);
 
   // Invalid rows: no position, no gap, red sectors.
   assert.ok(r[5].classList.contains('invalid-row'));
   assert.equal(cells(r[5])[0], '');
   assert.equal(cells(r[5])[6], '—');
+  assert.equal(cells(r[5])[7], '—');
   assert.ok(r[5].querySelector('.laptime-badge').classList.contains('invalid'));
   assert.equal(r[5].querySelectorAll('.sector-invalid').length, 3);
 });
