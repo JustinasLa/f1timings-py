@@ -402,3 +402,88 @@ test('track canvas backing store follows devicePixelRatio', () => {
   env.window.redrawCompleteTrack();
   assert.equal(setTransforms().length, 1, 'no resize when unchanged');
 });
+
+const LINE = [
+  { dist: 0, pos_x: 0, pos_z: 0 },
+  { dist: 100, pos_x: 0, pos_z: 100 },
+  { dist: 200, pos_x: 100, pos_z: 100 },
+  { dist: 300, pos_x: 100, pos_z: 0 }
+];
+const LEADER_TRACE = [[0, 0], [100, 1000], [200, 2000], [300, 3000]];
+const DRIVER_TRACE = [[0, 0], [100, 900], [200, 2100], [300, 3200]];
+
+function traceDrivers() {
+  return {
+    Max: { name: 'Max', lap_times: [{ time: '1:20.000', is_valid: true, is_fastest: true }] },
+    Lewis: { name: 'Lewis', lap_times: [{ time: '1:21.000', is_valid: true, is_fastest: false }] },
+    Bob: { name: 'Bob', lap_times: [{ time: '1:30.000', is_valid: false, is_fastest: false }] }
+  };
+}
+
+function overlayStrokes(env) {
+  return env.ctx2d.calls
+    .filter((c) => c.name === 'stroke' && ['#2ecc71', '#e74c3c'].includes(c.state.strokeStyle))
+    .map((c) => c.state.strokeStyle);
+}
+
+test('expanded driver colours the map where they gain or lose against the leader', async () => {
+  const env = withCanvas(createDashboard({
+    fetch: (url) => {
+      if (url === '/api/track/trace?track=monza&driver=Max') return jsonResponse({ time: '1:20.000', samples: LEADER_TRACE });
+      if (url === '/api/track/trace?track=monza&driver=Lewis') return jsonResponse({ time: '1:21.000', samples: DRIVER_TRACE });
+      return jsonResponse({}, 404);
+    }
+  }));
+  const w = env.window;
+  env.set('currentTrack', 'monza');
+  env.set('trackData', { points: LINE, transformParams: { minX: 0, minY: 0, scale: 1, centerOffsetX: 0, centerOffsetY: 0 } });
+
+  // No leader, then nobody comparable expanded: plain map, no trace fetches.
+  w.redrawCompleteTrack();
+  env.set('latestLeaderboardDrivers', traceDrivers());
+  env.run("expandedDrivers.add('Ghost'); expandedDrivers.add('Max'); expandedDrivers.add('Bob')");
+  w.redrawCompleteTrack();
+  assert.equal(env.callsTo('/api/track/trace').length, 0);
+
+  // Traces load in the background; the next redraw paints the overlay.
+  env.run("expandedDrivers.add('Lewis')");
+  w.redrawCompleteTrack();
+  assert.deepEqual(overlayStrokes(env), []);
+  await env.flush();
+  env.ctx2d.calls.length = 0;
+  w.redrawCompleteTrack();
+  assert.deepEqual(overlayStrokes(env), ['#2ecc71', '#e74c3c', '#e74c3c']);
+  const labels = env.ctx2d.calls.filter((c) => c.name === 'fillText').map((c) => c.args[0]);
+  assert.ok(labels.includes('Lewis vs Max: green gains, red loses'));
+
+  // Cached per comparison; recomputed when the track geometry changes.
+  w.redrawCompleteTrack();
+  env.set('trackData', { points: LINE, transformParams: env.get('trackData').transformParams });
+  env.ctx2d.calls.length = 0;
+  w.redrawCompleteTrack();
+  assert.equal(overlayStrokes(env).length, 3);
+  assert.equal(env.callsTo('/api/track/trace').length, 2);
+});
+
+test('lap traces that do not match the shown lap are ignored', async () => {
+  const responses = {
+    A: () => jsonResponse({ time: '1:00.000', samples: LEADER_TRACE }),
+    B: () => jsonResponse({ time: '1:21.000', samples: 'x' }),
+    C: () => jsonResponse({ time: '1:21.000', samples: [[0, 0]] }),
+    D: () => jsonResponse({}, 404)
+  };
+  const env = createDashboard({ fetch: (url) => responses[url.slice(-1)]() });
+  env.set('currentTrack', 'monza');
+  for (const name of Object.keys(responses)) {
+    env.window.getLapTrace({ name: name, lap_times: [{ time: '1:21.000' }] });
+  }
+  await env.flush();
+  assert.deepEqual(Object.values(plain(env.get('lapTraceCache'))), [null, null, null, null]);
+});
+
+test('traceTimeAt interpolates elapsed time by lap fraction', () => {
+  const env = createDashboard();
+  assert.equal(env.window.traceTimeAt(LEADER_TRACE, 0.5), 1500);
+  assert.equal(env.window.traceTimeAt(LEADER_TRACE, 1), 3000);
+  assert.equal(env.window.traceTimeAt([[10, 100], [30, 300]], 0), 0);
+});
