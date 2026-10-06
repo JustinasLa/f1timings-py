@@ -155,6 +155,14 @@ def test_worker_continues_after_packet_error(monkeypatch):
     assert state()["participants"][0]["name"] == "Hamilton"
 
 
+def test_worker_skips_wrong_format_packet_without_worker_error(monkeypatch, capsys):
+    run_worker(monkeypatch, [routes.UnsupportedPacketFormat(2023), participants("Hamilton")])
+
+    assert routes.listener_error is None
+    assert "ERROR IN TELEMETRY WORKER" not in capsys.readouterr().out
+    assert state()["participants"][0]["name"] == "Hamilton"
+
+
 def test_worker_exits_quietly_on_error_during_stop(monkeypatch, capsys):
     def stop_then_fail(stop_event):
         stop_event.set()
@@ -440,6 +448,21 @@ def test_lap_saved_with_visual_tyre_compound(monkeypatch, saved_laps):
         car_status_data=[SimpleNamespace(visual_tyre_compound=16)],
     )
     run_worker(monkeypatch, [participants("Hamilton"), lap(0), status, lap(75000)])
+
+    assert saved_laps[0][0].tyre == "Soft"
+
+
+def test_lap_keeps_tyre_from_lap_start_when_changed_mid_lap(monkeypatch, saved_laps):
+    def status(compound):
+        return SimpleNamespace(
+            header=SimpleNamespace(packet_id=7),
+            car_status_data=[SimpleNamespace(visual_tyre_compound=compound)],
+        )
+
+    run_worker(
+        monkeypatch,
+        [participants("Hamilton"), status(16), lap(0), lap(s1=25000), status(17), lap(75000)],
+    )
 
     assert saved_laps[0][0].tyre == "Soft"
 
