@@ -244,6 +244,7 @@ def test_save_lap_record_stores_all_fields_and_appends(tmp_path, monkeypatch):
     assert first == {
         "driver": "Max", "team": "Red Bull", "time": "1:12.000", "is_valid": True,
         "fastest_speed_kph": 300, "sector_1_ms": 1, "sector_2_ms": 2, "sector_3_ms": 3,
+        "tyre": None,
     }
     assert recorded_at[:4].isdigit() and "T" in recorded_at
     assert second["driver"] == "Lando"
