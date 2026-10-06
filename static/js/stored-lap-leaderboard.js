@@ -12,20 +12,26 @@ function formatTopSpeed(speedKph) {
   return Math.round(speedKph) + ' km/h';
 }
 
+function potentialMs(driver) {
+  const best = driver.best_sectors;
+  if (!best || !(best.s1 > 0 && best.s2 > 0 && best.s3 > 0)) {
+    return 0;
+  }
+  return best.s1 + best.s2 + best.s3;
+}
+
 function formatPotentialTime(driver) {
-  let best = driver.best_sectors;
-  if (!best) {
-    return '—';
-  }
+  const totalMs = potentialMs(driver);
+  return totalMs ? formatSeconds(totalMs / 1000) : '—';
+}
 
-  const haveAllSectors = best.s1 > 0 && best.s2 > 0 && best.s3 > 0;
-  if (!haveAllSectors) {
-    return '—';
+function buildPotentialTitle(driver, lap) {
+  const totalMs = potentialMs(driver);
+  const lostMs = Math.round(parseTimeToSeconds(lap.time) * 1000) - totalMs;
+  if (!totalMs || !lap.is_valid || !isFinite(lostMs) || lostMs <= 0) {
+    return '';
   }
-
-  const totalMs = best.s1 + best.s2 + best.s3;
-  const totalSeconds = totalMs / 1000;
-  return formatSeconds(totalSeconds);
+  return ' title="' + formatGap(lostMs / 1000) + ' left on the table vs best lap"';
 }
 
 function formatLeaderboardSectorMs(milliseconds) {
@@ -399,7 +405,7 @@ function updateLeaderboard(drivers) {
       </td>
       <td class="td-laps col-topspeed">${formatTopSpeed(lap.fastest_speed_kph)}</td>
       <td class="col-bestlap">${lapTimeHtml}</td>
-      <td class="td-laps col-potential">${formatPotentialTime(driver)}</td>
+      <td class="td-laps col-potential"${buildPotentialTitle(driver, lap)}>${formatPotentialTime(driver)}</td>
       <td class="col-sectors sectors-cell">${buildSectorBoxesHtml(driver, lap)}</td>
       <td class="td-laps col-gap">${gap}</td>
       <td class="td-laps col-laps">${lapCountText}</td>

@@ -32,6 +32,16 @@ test('formatTopSpeed, formatPotentialTime and formatLeaderboardSectorMs', () => 
   assert.equal(w.formatLeaderboardSectorMs(28123), '28.123');
 });
 
+test('buildPotentialTitle shows time left on the table vs the best lap', () => {
+  const { window: w } = createDashboard();
+  const best = { best_sectors: { s1: 30000, s2: 30000, s3: 23456 } };
+  assert.equal(w.buildPotentialTitle(best, { time: '1:23.700', is_valid: true }), ' title="0.244s left on the table vs best lap"');
+  assert.equal(w.buildPotentialTitle(best, { time: '1:23.456', is_valid: true }), '');
+  assert.equal(w.buildPotentialTitle(best, { time: '1:23.700', is_valid: false }), '');
+  assert.equal(w.buildPotentialTitle(best, { time: '', is_valid: true }), '');
+  assert.equal(w.buildPotentialTitle({}, { time: '1:23.700', is_valid: true }), '');
+});
+
 test('minSector ignores unset values and returns the smaller one', () => {
   const { window: w } = createDashboard();
   assert.equal(w.minSector(0, null), 0);
