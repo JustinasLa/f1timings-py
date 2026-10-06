@@ -101,6 +101,16 @@ def _origin_allowed(origin: str, scheme: str, host_header: str) -> bool:
     )
 
 
+SECURITY_HEADERS = [
+    (b"x-content-type-options", b"nosniff"),
+    (b"x-frame-options", b"DENY"),
+    (
+        b"content-security-policy",
+        b"script-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'",
+    ),
+]
+
+
 class HostOriginGuard:
     def __init__(self, app):
         self.app = app
@@ -133,6 +143,14 @@ class HostOriginGuard:
                     )
                     await response(scope, receive, send)
                 return
+        if scope["type"] == "http":
+            inner_send = send
+
+            async def send(message):
+                if message["type"] == "http.response.start":
+                    message["headers"] = [*message.get("headers", []), *SECURITY_HEADERS]
+                await inner_send(message)
+
         await self.app(scope, receive, send)
 
 
