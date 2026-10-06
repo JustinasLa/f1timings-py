@@ -89,3 +89,12 @@ def test_websocket_with_bad_host_is_rejected():
 def test_websocket_same_origin_connects():
     with client.websocket_connect("/ws", headers={"Origin": "http://testserver"}):
         assert len(main_module.manager.active_connections) == 1
+
+
+def test_responses_carry_security_headers():
+    for resp in (client.get("/"), client.get("/api/track")):
+        assert resp.headers["x-content-type-options"] == "nosniff"
+        assert resp.headers["x-frame-options"] == "DENY"
+        csp = resp.headers["content-security-policy"]
+        assert "script-src 'self'" in csp
+        assert "frame-ancestors 'none'" in csp
