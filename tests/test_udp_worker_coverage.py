@@ -177,28 +177,23 @@ def test_worker_skips_null_and_headerless_packets(monkeypatch, caplog):
     messages = [r.getMessage() for r in caplog.records]
     assert any("null/falsey packet" in m for m in messages)
     assert any("no 'header' attribute" in m for m in messages)
-    assert routes.packets_processed_count == 0
-    assert routes.packets_filtered_count == 0
     assert SENDER in routes.telemetry_sources
 
 
-def test_worker_filters_non_essential_packets(monkeypatch):
-    run_worker(
-        monkeypatch,
-        [SimpleNamespace(header=SimpleNamespace(packet_id=3)), lap(), lap()],
-    )
+def test_worker_filters_non_essential_packets(monkeypatch, caplog):
+    with caplog.at_level(logging.DEBUG, logger=routes.logger.name):
+        run_worker(monkeypatch, [SimpleNamespace(header=SimpleNamespace(packet_id=3))])
 
-    assert routes.packets_filtered_count == 1
-    assert routes.packets_processed_count == 2
+    assert "Packet ID 3 filtered out" in caplog.text
 
 
-def test_unhandled_packet_counted_but_ignored_when_filtering_disabled(monkeypatch):
+def test_unhandled_packet_ignored_when_filtering_disabled(monkeypatch, caplog):
     monkeypatch.setattr(routes, "ENABLE_PACKET_FILTERING", False)
 
-    run_worker(monkeypatch, [SimpleNamespace(header=SimpleNamespace(packet_id=3))])
+    with caplog.at_level(logging.DEBUG, logger=routes.logger.name):
+        run_worker(monkeypatch, [SimpleNamespace(header=SimpleNamespace(packet_id=3))])
 
-    assert routes.packets_filtered_count == 0
-    assert routes.packets_processed_count == 1
+    assert "filtered out" not in caplog.text
     assert routes.listener_error is None
     assert state()["participants"] == [{}] * 22
 

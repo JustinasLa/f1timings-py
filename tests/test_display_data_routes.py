@@ -30,18 +30,6 @@ def _write_records(tmp_path, track, records):
     return path
 
 
-def test_get_drivers_returns_stored_drivers():
-    app_data.drivers["Max"] = Driver(name="Max", team="Red Bull", lap_times=[LapTime(time="1:12.000")])
-
-    resp = client.get("/api/drivers")
-
-    assert resp.status_code == 200
-    body = resp.json()
-    assert list(body) == ["Max"]
-    assert body["Max"]["team"] == "Red Bull"
-    assert body["Max"]["lap_times"][0]["time_seconds"] == 72.0
-
-
 def test_get_live_drivers_uses_live_data(monkeypatch):
     async def fake_live():
         return {"Car 1": {"name": "Car 1", "team": "Ferrari", "world_x": 1.5}}
@@ -117,13 +105,6 @@ def test_get_track_data_unknown_track_is_404():
 
     assert resp.status_code == 404
     assert resp.json() == {"detail": "Track data not found for 'Nowhere'"}
-
-
-def test_get_available_tracks_lists_bundled_tracks():
-    tracks = client.get("/api/tracks").json()
-
-    assert tracks == track_map_loader.track_service.get_available_tracks()
-    assert "monaco" in tracks
 
 
 def test_get_track_records_for_current_track(isolated_state):

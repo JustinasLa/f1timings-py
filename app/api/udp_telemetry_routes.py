@@ -105,19 +105,6 @@ ESSENTIAL_PACKET_IDS = {
     7,
 }
 
-OPTIONAL_PACKET_IDS = {
-    3,
-    5,
-    6,
-    8,
-    9,
-    10,
-    11,
-    12,
-    13,
-    14,
-}
-
 ENABLE_PACKET_FILTERING = True
 
 raw_capture_enabled = False
@@ -432,9 +419,6 @@ def _submit_to_main_loop(coro, what: str):
     future.add_done_callback(_log_failure)
     return future
 
-packets_processed_count = 0
-packets_filtered_count = 0
-
 
 def _normalize_driver_name(name: str) -> str:
     return name.strip().lower()
@@ -587,7 +571,7 @@ def get_local_ip():
 
 
 def telemetry_listener_worker(host: str, port: int, stop_event: threading.Event):
-    global listener_error, active_drivers_count, packets_processed_count, packets_filtered_count
+    global listener_error, active_drivers_count
     global latest_car_positions, participant_data_store, session_data_store, enhanced_session_data_store, lap_data_store, telemetry_sources
 
     listener_instance = None
@@ -644,13 +628,10 @@ def telemetry_listener_worker(host: str, port: int, stop_event: threading.Event)
                             }
 
                     if not should_process_packet(packet_id):
-                        packets_filtered_count += 1
                         logger.debug(
                             f"Packet ID {packet_id} filtered out for performance"
                         )
                         continue
-
-                    packets_processed_count += 1
 
                     if packet_id == 0:
                         logger.debug(
@@ -1305,7 +1286,7 @@ def telemetry_listener_worker(host: str, port: int, stop_event: threading.Event)
 def _clear_listener_state():
     global listener_thread, listener_stop_event, listener_port, listener_host, listener_error, active_drivers_count
     global latest_car_positions, participant_data_store, session_data_store, enhanced_session_data_store, lap_data_store
-    global packets_processed_count, packets_filtered_count, _last_auto_set_track_id
+    global _last_auto_set_track_id
 
     listener_thread = None
     listener_stop_event = None
@@ -1322,8 +1303,6 @@ def _clear_listener_state():
     with telemetry_sources_lock:
         telemetry_sources.clear()
 
-    packets_processed_count = 0
-    packets_filtered_count = 0
 
     _last_auto_set_track_id = None
 
