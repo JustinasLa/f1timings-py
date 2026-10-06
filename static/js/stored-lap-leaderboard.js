@@ -12,6 +12,15 @@ function formatTopSpeed(speedKph) {
   return Math.round(speedKph) + ' km/h';
 }
 
+function formatTyreTag(tyre) {
+  if (!tyre) {
+    return '';
+  }
+  const name = String(tyre);
+  return '<span class="tyre-tag tyre-' + escapeAttr(name.toLowerCase()) + '" title="' +
+    escapeAttr(name) + '">' + escapeHtml(name.charAt(0)) + '</span>';
+}
+
 function potentialMs(driver) {
   const best = driver.best_sectors;
   if (!best || !(best.s1 > 0 && best.s2 > 0 && best.s3 > 0)) {
@@ -231,7 +240,8 @@ function buildDriversFromRecords(records) {
       fastest_speed_kph: record.fastest_speed_kph,
       sector_1_ms: record.sector_1_ms,
       sector_2_ms: record.sector_2_ms,
-      sector_3_ms: record.sector_3_ms
+      sector_3_ms: record.sector_3_ms,
+      tyre: record.tyre
     };
 
     const lapDetail = {
@@ -241,7 +251,8 @@ function buildDriversFromRecords(records) {
       recorded_at: record.recorded_at || '',
       sector_1_ms: record.sector_1_ms,
       sector_2_ms: record.sector_2_ms,
-      sector_3_ms: record.sector_3_ms
+      sector_3_ms: record.sector_3_ms,
+      tyre: record.tyre
     };
 
     if (!drivers[driverName]) {
@@ -412,7 +423,7 @@ function updateLeaderboard(drivers) {
         </div>
       </td>
       <td class="td-laps col-topspeed">${formatTopSpeed(lap.fastest_speed_kph)}</td>
-      <td class="col-bestlap">${lapTimeHtml}</td>
+      <td class="col-bestlap">${lapTimeHtml}${formatTyreTag(lap.tyre)}</td>
       <td class="td-laps col-potential"${buildPotentialTitle(driver, lap)}>${formatPotentialTime(driver)}</td>
       <td class="col-sectors sectors-cell">${buildSectorBoxesHtml(driver, lap)}</td>
       <td class="td-laps col-gap">${gap}</td>
@@ -535,7 +546,7 @@ function buildLapDetailRow(driver, fastestValidTime) {
       <td class="lap-detail-when">${escapeHtml(clock)}</td>
       <td class="td-laps col-topspeed">${formatTopSpeed(lap.fastest_speed_kph)}</td>
       <td class="col-bestlap">
-        <span class="laptime-badge ${badgeClass}">${formatTime(lap.time)}</span>
+        <span class="laptime-badge ${badgeClass}">${formatTime(lap.time)}</span>${formatTyreTag(lap.tyre)}
       </td>
       <td class="td-laps col-potential"></td>
       <td class="col-sectors sectors-cell">${buildDetailSectorBoxesHtml(driver, lap)}</td>
