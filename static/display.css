@@ -1035,3 +1035,17 @@ body.layout-resizing {
   color: var(--text-muted);
   font-style: italic;
 }
+
+/* The column switches hide their real checkbox, so show keyboard focus on the track. */
+.column-switch input:focus-visible + .column-switch-track {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+/* Shorten rather than drop motion: toasts are removed on animationend. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

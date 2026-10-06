@@ -142,7 +142,7 @@
             <div class="pole-lap-time" id="poleLapTime">--:--.---</div>
             <div class="pole-lap-meta" id="poleLapMeta"></div>
           </div>
-          <div id="lap-toast-container"></div>
+          <div id="lap-toast-container" role="status" aria-live="polite"></div>
           <div class="map-conditions" id="mapConditions" style="display:none">
             <div class="condition-marker">
               <div class="condition-label">Track</div>
@@ -156,7 +156,7 @@
         </div>
         <canvas id="trackCanvas" width="1200" height="800" style="display:none"></canvas>
         <div class="track-placeholder" id="trackPlaceholder">
-          <div class="track-placeholder-icon">&#127937;</div>
+          <div class="track-placeholder-icon" aria-hidden="true">&#127937;</div>
           <div>Track visualization</div>
           <div style="font-size:11px;opacity:0.6;margin-top:4px">Select a track from the map header</div>
         </div>
@@ -171,7 +171,7 @@
 
   </div>
 
-  <div id="toast-container"></div>
+  <div id="toast-container" role="status" aria-live="polite"></div>
 
   <script src="/js/dashboard-settings.js"></script>
   <script src="/js/shared-dashboard-state.js"></script>
