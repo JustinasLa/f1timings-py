@@ -136,3 +136,22 @@ def test_set_track_to_empty_clears_without_broadcast(ws):
 
     assert app_data.track_name is None
     assert ws.messages == []
+
+
+def test_faster_invalid_lap_is_not_new_best_or_overall_fastest(ws):
+    asyncio.run(add_or_update_lap_time(_lap("1:12.000")))
+    asyncio.run(add_or_update_lap_time(_lap("1:05.000", is_valid=False)))
+
+    data = ws.messages[-1]["data"]
+    assert data["is_faster"] is False
+    assert data["is_overall_fastest"] is False
+    assert [lap.is_fastest for lap in app_data.drivers["Max"].lap_times] == [True, False]
+
+
+def test_overall_fastest_flag_moves_to_new_fastest_lap(ws):
+    asyncio.run(add_or_update_lap_time(_lap("1:12.000")))
+    asyncio.run(add_or_update_lap_time(_lap("1:11.000", name="Lando", team="McLaren")))
+
+    assert app_data.drivers["Max"].lap_times[0].is_fastest is False
+    assert app_data.drivers["Lando"].lap_times[0].is_fastest is True
+    assert ws.messages[-1]["data"]["is_overall_fastest"] is True

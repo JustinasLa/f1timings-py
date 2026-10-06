@@ -155,6 +155,14 @@ def test_worker_continues_after_packet_error(monkeypatch):
     assert state()["participants"][0]["name"] == "Hamilton"
 
 
+def test_worker_skips_wrong_format_packet_without_worker_error(monkeypatch, capsys):
+    run_worker(monkeypatch, [routes.UnsupportedPacketFormat(2023), participants("Hamilton")])
+
+    assert routes.listener_error is None
+    assert "ERROR IN TELEMETRY WORKER" not in capsys.readouterr().out
+    assert state()["participants"][0]["name"] == "Hamilton"
+
+
 def test_worker_exits_quietly_on_error_during_stop(monkeypatch, capsys):
     def stop_then_fail(stop_event):
         stop_event.set()

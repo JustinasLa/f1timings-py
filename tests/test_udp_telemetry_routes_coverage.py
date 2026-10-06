@@ -479,6 +479,47 @@ def test_stop_hides_transient_worker_errors(monkeypatch):
     assert result == {"message": "UDP telemetry listener stopped."}
 
 
+def test_parse_packet_rejects_wrong_format_and_warns_once(monkeypatch, caplog):
+    monkeypatch.setattr(routes, "_warned_packet_formats", set())
+    monkeypatch.setattr(routes, "listener_error", None)
+    header = routes.PacketHeader()
+    packets = []
+
+    class FakeSocket:
+        def recvfrom(self, size):
+            return packets.pop(0), ("10.0.0.9", 5000)
+
+    listener = SimpleNamespace(socket=FakeSocket())
+    for fmt in (2023, 2023, 2022):
+        header.packet_format = fmt
+        packets.append(bytes(header))
+        with caplog.at_level(logging.WARNING, logger=routes.__name__):
+            with pytest.raises(routes.UnsupportedPacketFormat):
+                routes._parse_packet_with_sender(listener)
+
+    warnings = [r.getMessage() for r in caplog.records]
+    assert len(warnings) == 2
+    assert "Received UDP format 2023; set Telemetry Settings > UDP Format to 2024" in warnings[0]
+    assert routes.listener_error == "UDP format 2022, need 2024"
+
+    good = routes.HEADER_FIELD_TO_PACKET_TYPE[(2024, 1, 1)]()
+    good.header.packet_format, good.header.packet_version, good.header.packet_id = 2024, 1, 1
+    packets.append(bytes(good))
+    routes._parse_packet_with_sender(listener)
+    assert routes.listener_error is None
+
+
+def test_parse_packet_keeps_unrelated_listener_error(monkeypatch):
+    monkeypatch.setattr(routes, "listener_error", "Error in telemetry worker: boom")
+    good = routes.HEADER_FIELD_TO_PACKET_TYPE[(2024, 1, 1)]()
+    good.header.packet_format, good.header.packet_version, good.header.packet_id = 2024, 1, 1
+    listener = SimpleNamespace(
+        socket=SimpleNamespace(recvfrom=lambda size: (bytes(good), ("10.0.0.9", 5000)))
+    )
+    routes._parse_packet_with_sender(listener)
+    assert routes.listener_error == "Error in telemetry worker: boom"
+
+
 # --------------------------------------------------------------- status
 
 
