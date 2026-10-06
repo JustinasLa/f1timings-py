@@ -448,6 +448,36 @@ def test_lap_saved_without_tyre_when_compound_unknown(monkeypatch, saved_laps):
     run_worker(monkeypatch, [participants("Hamilton"), lap(0), lap(75000)])
 
     assert saved_laps[0][0].tyre is None
+    assert saved_laps[0][0].assists is None
+
+
+def _assist_packets(tc, abs_, racing_line, player_car_index):
+    session = SimpleNamespace(
+        header=SimpleNamespace(packet_id=1),
+        track_id=0, network_game=0, game_paused=0, session_type=13,
+        session_link_identifier=0, session_time_left=0, session_duration=0,
+        pit_speed_limit=80, weather=0, track_temperature=30, air_temperature=25,
+        time_of_day=0, dynamic_racing_line=racing_line,
+    )
+    status = SimpleNamespace(
+        header=SimpleNamespace(packet_id=7),
+        car_status_data=[SimpleNamespace(traction_control=tc, anti_lock_brakes=abs_)],
+    )
+    finished = lap(75000)
+    finished.header.player_car_index = player_car_index
+    return [session, participants("Hamilton"), lap(0), status, finished]
+
+
+def test_lap_saved_with_player_assists(monkeypatch, saved_laps):
+    run_worker(monkeypatch, _assist_packets(tc=2, abs_=0, racing_line=1, player_car_index=0))
+
+    assert saved_laps[0][0].assists == ["TC", "RL"]
+
+
+def test_racing_line_ignored_for_non_player_car(monkeypatch, saved_laps):
+    run_worker(monkeypatch, _assist_packets(tc=0, abs_=1, racing_line=2, player_car_index=5))
+
+    assert saved_laps[0][0].assists == ["ABS"]
 
 
 def test_personal_best_ghost_lap_is_not_saved(monkeypatch, saved_laps):
@@ -549,6 +579,8 @@ def test_car_status_updates_known_participants_only(monkeypatch):
         actual_tyre_compound=16,
         visual_tyre_compound=17,
         vehicle_fia_flags=3,
+        traction_control=1,
+        anti_lock_brakes=1,
     )
     packet = SimpleNamespace(
         header=SimpleNamespace(packet_id=7),
@@ -569,6 +601,8 @@ def test_car_status_updates_known_participants_only(monkeypatch):
     assert first["tyreCompound"] == 16
     assert first["visualTyreCompound"] == 17
     assert first["vehicleFiaFlags"] == 3
+    assert first["tractionControl"] == 1
+    assert first["antiLockBrakes"] == 1
     assert state()["participants"][1] == {}
     assert len(state()["participants"]) == 22
     assert routes.listener_error is None
