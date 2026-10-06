@@ -790,6 +790,11 @@ body.layout-resizing {
   max-width: 100%;
   max-height: 100%;
 }
+.trace-chart {
+  width: 100%;
+  flex-shrink: 0;
+  border-top: 1px solid var(--border);
+}
 .track-placeholder {
   display: flex;
   flex-direction: column;
