@@ -32,6 +32,20 @@ test('formatTopSpeed, formatPotentialTime and formatLeaderboardSectorMs', () => 
   assert.equal(w.formatLeaderboardSectorMs(28123), '28.123');
 });
 
+test('formatTyreTag renders an escaped compound badge or nothing', () => {
+  const { window: w } = createDashboard();
+  assert.equal(w.formatTyreTag(null), '');
+  assert.equal(w.formatTyreTag(undefined), '');
+  assert.equal(
+    w.formatTyreTag('Soft'),
+    '<span class="tyre-tag tyre-soft" title="Soft">S</span>'
+  );
+  assert.equal(
+    w.formatTyreTag('<x"'),
+    '<span class="tyre-tag tyre-&lt;x&quot;" title="&lt;x&quot;">&lt;</span>'
+  );
+});
+
 test('buildPotentialTitle shows time left on the table vs the best lap', () => {
   const { window: w } = createDashboard();
   const best = { best_sectors: { s1: 30000, s2: 30000, s3: 23456 } };
@@ -174,7 +188,7 @@ test('buildDriversFromRecords groups laps, picks best lap and marks the fastest'
     rec('Ann', '1:25.000', { recorded_at: '2026-01-01T10:05:00', team: 'Scuderia Ferrari', sector_1_ms: 29000, sector_2_ms: 31000, sector_3_ms: 25000 }),
     rec('Ann', '1:28.000', { recorded_at: '2026-01-01T10:05:00' }),
     rec('Ann', '1:20.000', { is_valid: false, sector_1_ms: 1, recorded_at: '2026-01-01T09:00:00' }),
-    rec('Ann', '1:24.000', { team: undefined }),
+    rec('Ann', '1:24.000', { team: undefined, tyre: 'Medium' }),
     { time: '1:40.000' },
     rec('Bob', '1:50.000', { is_valid: false }),
     rec('Bob', '1:45.000')
@@ -192,6 +206,8 @@ test('buildDriversFromRecords groups laps, picks best lap and marks the fastest'
     ['1:25.000', '1:28.000', '1:30.000', '1:20.000', '1:24.000']
   );
   assert.equal(ann.recent_laps[4].recorded_at, '');
+  assert.equal(ann.lap_times[0].tyre, 'Medium');
+  assert.equal(ann.recent_laps[4].tyre, 'Medium');
 
   assert.equal(drivers.Unknown.team, 'Unknown Team');
   assert.equal(drivers.Unknown.lap_times[0].is_fastest, false);
