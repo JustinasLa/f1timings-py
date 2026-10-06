@@ -91,7 +91,8 @@ TRACK_ID_TO_NAME = {
     32: "qatar",
 }
 
-SHORT_LAYOUT_TRACK_IDS = {21, 22, 23, 24}
+# Short (21-24) and reverse (39-41) layouts have no map or records of their own.
+SHORT_LAYOUT_TRACK_IDS = {21, 22, 23, 24, 39, 40, 41}
 
 _last_auto_set_track_id = None
 
@@ -400,6 +401,9 @@ enhanced_session_data_store: dict = {}
 lap_data_store: list = []
 telemetry_sources: Dict[str, Dict[str, Any]] = {}
 telemetry_sources_lock = threading.Lock()
+# Serializes /start and /stop so a stop can't clear state mid-start (or wipe a
+# listener started while it was awaiting the old thread's join).
+_listener_control_lock = asyncio.Lock()
 DRIVER_ALIASES_FILE = "driver_aliases.json"
 _driver_aliases_lock = threading.Lock()
 
@@ -1351,86 +1355,88 @@ def _clear_listener_state():
 async def start_telemetry(port: int = Query(20777, ge=1024, le=65535)):
     global listener_thread, listener_stop_event, listener_port, listener_host, listener_error, active_drivers_count
 
-    desired_host = os.getenv("F1_TELEMETRY_LISTENER_HOST", "0.0.0.0")
+    async with _listener_control_lock:
+        desired_host = os.getenv("F1_TELEMETRY_LISTENER_HOST", "0.0.0.0")
 
-    if not F1_TELEMETRY_AVAILABLE:
-        raise HTTPException(
-            status_code=500,
-            detail="F1 Telemetry library (f1_24_telemetry) is not installed or available.",
-        )
+        if not F1_TELEMETRY_AVAILABLE:
+            raise HTTPException(
+                status_code=500,
+                detail="F1 Telemetry library (f1_24_telemetry) is not installed or available.",
+            )
 
-    if listener_thread and listener_thread.is_alive():
-        raise HTTPException(
-            status_code=400,
-            detail=f"Telemetry listener is already running on host {listener_host}, port {listener_port}",
-        )
+        if listener_thread and listener_thread.is_alive():
+            raise HTTPException(
+                status_code=400,
+                detail=f"Telemetry listener is already running on host {listener_host}, port {listener_port}",
+            )
 
-    _clear_listener_state()
-    listener_port = port
-    listener_host = desired_host
-    listener_stop_event = threading.Event()
-
-    listener_thread = threading.Thread(
-        target=telemetry_listener_worker,
-        args=(listener_host, listener_port, listener_stop_event),
-        daemon=True,
-    )
-    listener_thread.start()
-
-    await asyncio.sleep(0.5)
-
-    if listener_error:
-        initial_error = listener_error
         _clear_listener_state()
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to start telemetry listener: {initial_error}",
-        )
+        listener_port = port
+        listener_host = desired_host
+        listener_stop_event = threading.Event()
 
-    if not listener_thread.is_alive():
-        _clear_listener_state()
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to start telemetry listener: Thread did not start.",
+        listener_thread = threading.Thread(
+            target=telemetry_listener_worker,
+            args=(listener_host, listener_port, listener_stop_event),
+            daemon=True,
         )
+        listener_thread.start()
 
-    local_ip = get_local_ip()
-    return StartResponse(
-        message=f"UDP telemetry listener started on host {listener_host}, port {listener_port}",
-        host=listener_host,
-        port=listener_port,
-    )
+        await asyncio.sleep(0.5)
+
+        if listener_error:
+            initial_error = listener_error
+            _clear_listener_state()
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to start telemetry listener: {initial_error}",
+            )
+
+        if not listener_thread.is_alive():
+            _clear_listener_state()
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to start telemetry listener: Thread did not start.",
+            )
+
+        local_ip = get_local_ip()
+        return StartResponse(
+            message=f"UDP telemetry listener started on host {listener_host}, port {listener_port}",
+            host=listener_host,
+            port=listener_port,
+        )
 
 
 @telemetry_router.post("/stop")
 async def stop_telemetry():
     global listener_thread, listener_stop_event
 
-    if not listener_thread or not listener_thread.is_alive() or not listener_stop_event:
-        raise HTTPException(
-            status_code=400, detail="Telemetry listener is not running."
+    async with _listener_control_lock:
+        if not listener_thread or not listener_thread.is_alive() or not listener_stop_event:
+            raise HTTPException(
+                status_code=400, detail="Telemetry listener is not running."
+            )
+
+        print("Attempting to stop telemetry listener...")
+        listener_stop_event.set()
+        await asyncio.to_thread(listener_thread.join, timeout=3.0)
+
+        if listener_thread.is_alive():
+            print("Telemetry listener thread did not stop gracefully after timeout.")
+
+        final_error = (
+            listener_error
         )
+        _clear_listener_state()
+        print("Telemetry listener stop process completed.")
 
-    print("Attempting to stop telemetry listener...")
-    listener_stop_event.set()
-    listener_thread.join(timeout=3.0)
+        response_message = "UDP telemetry listener stopped."
+        if final_error and "Error in telemetry worker" not in final_error:
+            response_message += (
+                f" Note: An error occurred during operation or shutdown: {final_error}"
+            )
 
-    if listener_thread.is_alive():
-        print("Telemetry listener thread did not stop gracefully after timeout.")
-
-    final_error = (
-        listener_error
-    )
-    _clear_listener_state()
-    print("Telemetry listener stop process completed.")
-
-    response_message = "UDP telemetry listener stopped."
-    if final_error and "Error in telemetry worker" not in final_error:
-        response_message += (
-            f" Note: An error occurred during operation or shutdown: {final_error}"
-        )
-
-    return {"message": response_message}
+        return {"message": response_message}
 
 
 @telemetry_router.get("/status", response_model=TelemetryStatus)

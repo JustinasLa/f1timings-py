@@ -334,8 +334,13 @@ def start_env(monkeypatch):
 
     async def fake_sleep(seconds):
         sleeps.append(seconds)
+        await asyncio.sleep(0)  # yield so concurrent requests can interleave
 
-    monkeypatch.setattr(routes, "asyncio", SimpleNamespace(sleep=fake_sleep))
+    monkeypatch.setattr(
+        routes,
+        "asyncio",
+        SimpleNamespace(sleep=fake_sleep, to_thread=asyncio.to_thread),
+    )
     monkeypatch.setattr(routes, "F1_TELEMETRY_AVAILABLE", True)
     local_ip_calls = []
 
@@ -385,6 +390,24 @@ def test_start_and_stop_listener(start_env, monkeypatch):
     assert routes.listener_thread is None
     assert routes.listener_stop_event is None
     assert routes.listener_port is None
+
+
+def test_concurrent_start_and_stop_are_serialized(start_env):
+    thread = start_env.install(FakeThread())
+
+    async def start_and_stop():
+        # Without serialization, stop would clear state during start's sleep
+        # and start would crash on listener_thread being None.
+        return await asyncio.gather(
+            routes.start_telemetry(port=20777), routes.stop_telemetry()
+        )
+
+    started, stopped = asyncio.run(start_and_stop())
+
+    assert started.port == 20777
+    assert stopped == {"message": "UDP telemetry listener stopped."}
+    assert thread.joins == [3.0]
+    assert routes.listener_thread is None
 
 
 def test_start_defaults_host_and_reports_worker_error(start_env, monkeypatch):

@@ -200,7 +200,7 @@ def test_lap_falls_back_to_displayed_track_when_source_track_id_unmapped(
     assert lap_messages[0]["data"]["track"] == "spain"
 
 
-@pytest.mark.parametrize("short_track_id", [21, 22, 23, 24])
+@pytest.mark.parametrize("short_track_id", [21, 22, 23, 24, 39, 40, 41])
 def test_short_layout_lap_not_saved_and_display_track_unchanged(
     worker_env, monkeypatch, caplog, short_track_id
 ):
