@@ -43,6 +43,19 @@ function buildPotentialTitle(driver, lap) {
   return ' title="' + formatGap(lostMs / 1000) + ' left on the table vs best lap"';
 }
 
+function formatConsistency(driver) {
+  const times = (driver.all_laps || [])
+    .filter(lap => lap.is_valid !== false)
+    .map(lap => parseTimeToSeconds(lap.time))
+    .filter(isFinite);
+  if (times.length < 3) {
+    return '—';
+  }
+  const mean = times.reduce((sum, t) => sum + t, 0) / times.length;
+  const variance = times.reduce((sum, t) => sum + (t - mean) * (t - mean), 0) / times.length;
+  return '±' + formatGap(Math.sqrt(variance));
+}
+
 function formatLeaderboardSectorMs(milliseconds) {
   if (milliseconds === null || milliseconds === undefined || milliseconds <= 0) {
     return '—';
@@ -354,7 +367,7 @@ function updateLeaderboard(drivers) {
     Object.keys(leaderboardDrivers).length;
 
   if (allRows.length === 0) {
-    const emptyRowsHtml = `<tr class="no-data-row"><td colspan="9">No timing data recorded for this track</td></tr>`;
+    const emptyRowsHtml = `<tr class="no-data-row"><td colspan="10">No timing data recorded for this track</td></tr>`;
     if (emptyRowsHtml !== lastLeaderboardRowsHtml) {
       tbody.innerHTML = emptyRowsHtml;
       lastLeaderboardRowsHtml = emptyRowsHtml;
@@ -428,6 +441,7 @@ function updateLeaderboard(drivers) {
       <td class="col-sectors sectors-cell">${buildSectorBoxesHtml(driver, lap)}</td>
       <td class="td-laps col-gap">${gap}</td>
       <td class="td-laps col-interval">${interval}</td>
+      <td class="td-laps col-consistency">${formatConsistency(driver)}</td>
       <td class="td-laps col-laps">${lapCountText}</td>
     </tr>`;
 
@@ -512,7 +526,7 @@ function buildDetailSectorBoxesHtml(driver, lap) {
 function buildLapDetailRow(driver, fastestValidTime) {
   const laps = driver.recent_laps || [];
   if (laps.length === 0) {
-    return `<tr class="lap-detail-row"><td colspan="9">No recent laps</td></tr>`;
+    return `<tr class="lap-detail-row"><td colspan="10">No recent laps</td></tr>`;
   }
 
   let rowsHtml = '';
@@ -552,6 +566,7 @@ function buildLapDetailRow(driver, fastestValidTime) {
       <td class="col-sectors sectors-cell">${buildDetailSectorBoxesHtml(driver, lap)}</td>
       <td class="td-laps col-gap">${gap}</td>
       <td class="td-laps col-interval"></td>
+      <td class="td-laps col-consistency"></td>
       <td class="td-laps col-laps"></td>
     </tr>`;
   }

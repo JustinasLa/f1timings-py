@@ -271,7 +271,8 @@ test('updateLeaderboard renders sorted rows with positions, gaps and badges', ()
   assert.equal(cells(r[0])[4], '1:30.000');
   assert.equal(cells(r[0])[6], '—');
   assert.equal(cells(r[0])[7], '—', 'leader has no interval');
-  assert.equal(cells(r[0])[8], '1');
+  assert.equal(cells(r[0])[8], '—', 'fewer than 3 valid laps has no consistency');
+  assert.equal(cells(r[0])[9], '1');
 
   assert.ok(r[1].querySelector('.td-pos').classList.contains('p2'));
   assert.equal(r[1].querySelector('.team-dot').style.background, 'rgb(220, 0, 0)');
@@ -294,6 +295,7 @@ test('updateLeaderboard renders sorted rows with positions, gaps and badges', ()
   assert.equal(live[6], '—');
   assert.equal(live[7], '—');
   assert.equal(live[8], '—');
+  assert.equal(live[9], '—');
   assert.deepEqual(r[4].className.trim().split(/\s+/), ['clickable-row']);
 
   // Invalid rows: no position, no gap, red sectors.
@@ -303,6 +305,25 @@ test('updateLeaderboard renders sorted rows with positions, gaps and badges', ()
   assert.equal(cells(r[5])[7], '—');
   assert.ok(r[5].querySelector('.laptime-badge').classList.contains('invalid'));
   assert.equal(r[5].querySelectorAll('.sector-invalid').length, 3);
+});
+
+test('formatConsistency is the std dev of valid, parseable stored laps', () => {
+  const { window: w } = createDashboard();
+  const lap = (time, is_valid = true) => ({ time, is_valid });
+  assert.equal(w.formatConsistency({}), '—');
+  assert.equal(w.formatConsistency({ all_laps: [lap('1:30.000'), lap('1:31.000'), lap('1:20.000', false), lap('bad')] }), '—');
+  assert.equal(w.formatConsistency({ all_laps: [lap('1:30.000'), lap('1:31.000'), lap('1:32.000'), lap('1:00.000', false)] }), '±0.816s');
+});
+
+test('updateLeaderboard renders the consistency column from stored laps', () => {
+  const env = createDashboard();
+  const w = env.window;
+  w.updateLeaderboard(w.buildDriversFromRecords([
+    rec('Ann', '1:30.000'), rec('Ann', '1:30.500'), rec('Ann', '1:31.000'), rec('Bob', '1:35.000')
+  ]));
+  const r = rows(env.document);
+  assert.equal(r[0].querySelector('.col-consistency').textContent, '±0.408s');
+  assert.equal(r[1].querySelector('.col-consistency').textContent, '—');
 });
 
 test('updateLeaderboard handles missing lap counts and unparseable fastest times', () => {
