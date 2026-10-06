@@ -32,6 +32,7 @@ class LapDeleteInput(BaseModel):
 from app.services.track_map_loader import track_service
 from app.services.saved_lap_records import (
     load_track_records,
+    load_lap_traces,
     delete_lap_record,
     make_safe_file_name,
 )
@@ -106,6 +107,25 @@ async def get_track_records_endpoint(track: str = None):
         lap_times = []
 
     return {"track": track_name, "lap_times": lap_times}
+
+
+@router.get("/api/track/trace", tags=["Track"])
+async def get_lap_trace_endpoint(driver: str, track: str = None):
+    track_name = track if track else await get_track()
+    if not track_name:
+        raise HTTPException(status_code=404, detail="No track name set or specified")
+
+    traces = await asyncio.to_thread(load_lap_traces, track_name)
+    trace = traces.get(driver)
+    if not isinstance(trace, dict):
+        raise HTTPException(status_code=404, detail=f"No lap trace for '{driver}'")
+
+    return {
+        "track": track_name,
+        "driver": driver,
+        "time": trace.get("time"),
+        "samples": trace.get("samples", []),
+    }
 
 
 @router.get("/api/qr.svg", tags=["Display"])

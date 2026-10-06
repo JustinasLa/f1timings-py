@@ -288,8 +288,102 @@ function redrawCompleteTrack() {
 
   const canvasPoints = buildTrackCanvasPoints(trackData, params, trackData.transformParams);
   strokeTrackOutline(canvasPoints);
+  strokeGainLossOverlay(canvasPoints);
 
   drawTrackMarkers();
+}
+
+// Gain/loss colouring: the most recently expanded leaderboard driver against
+// the leader, from each one's best-lap trace ([distance_m, elapsed_ms, ...]).
+const GAIN_COLOR = '#2ecc71';
+const LOSS_COLOR = '#e74c3c';
+const lapTraceCache = {};
+let gainLossCache = { key: '', track: null, colors: [] };
+
+function getLapTrace(driver) {
+  const lap = driver.lap_times[0];
+  const key = currentTrack + '|' + driver.name + '|' + lap.time;
+  if (!(key in lapTraceCache)) {
+    lapTraceCache[key] = null;
+    const url = '/api/track/trace?track=' + encodeURIComponent(currentTrack) +
+      '&driver=' + encodeURIComponent(driver.name);
+    fetchJsonWithTimeout(url, 1500)
+      .then((trace) => {
+        // A trace from an older or deleted lap must not colour this one.
+        if (trace.time === lap.time && Array.isArray(trace.samples) && trace.samples.length > 1) {
+          lapTraceCache[key] = trace.samples;
+        }
+      })
+      .catch(() => {});
+  }
+  return lapTraceCache[key];
+}
+
+function findTraceComparison() {
+  const leader = Object.values(latestLeaderboardDrivers).find((d) => d.lap_times[0].is_fastest);
+  if (!leader) return null;
+  const driver = [...expandedDrivers].reverse()
+    .map((name) => latestLeaderboardDrivers[name])
+    .find((d) => d && d !== leader && d.lap_times[0].is_valid);
+  if (!driver) return null;
+  const driverTrace = getLapTrace(driver);
+  const leaderTrace = getLapTrace(leader);
+  if (!driverTrace || !leaderTrace) return null;
+  return { driver: driver, leader: leader, driverTrace: driverTrace, leaderTrace: leaderTrace };
+}
+
+// Elapsed ms at a fraction of the lap, interpolated between samples.
+function traceTimeAt(samples, fraction) {
+  const target = fraction * samples[samples.length - 1][0];
+  let i = 1;
+  while (i < samples.length - 1 && samples[i][0] < target) i++;
+  const [d0, t0] = samples[i - 1];
+  const [d1, t1] = samples[i];
+  return t0 + (t1 - t0) * (target - d0) / (d1 - d0);
+}
+
+// Map points carry cumulative distance from the start line, so each point's
+// lap fraction lines up with the same fraction of the trace.
+function computeGainLossColors(points, driverTrace, leaderTrace) {
+  const total = points[points.length - 1].dist;
+  const deltas = points.map((point) =>
+    traceTimeAt(driverTrace, point.dist / total) - traceTimeAt(leaderTrace, point.dist / total));
+  const colors = [];
+  for (let k = 0; k < points.length - 1; k++) {
+    colors.push(deltas[k + 1] - deltas[k] <= 0 ? GAIN_COLOR : LOSS_COLOR);
+  }
+  return colors;
+}
+
+function strokeGainLossOverlay(canvasPoints) {
+  const comparison = findTraceComparison();
+  if (!comparison) return;
+  const key = [comparison.driver.name, comparison.driver.lap_times[0].time,
+    comparison.leader.name, comparison.leader.lap_times[0].time].join('|');
+  if (gainLossCache.key !== key || gainLossCache.track !== trackData) {
+    gainLossCache = {
+      key: key,
+      track: trackData,
+      colors: computeGainLossColors(trackData.points, comparison.driverTrace, comparison.leaderTrace)
+    };
+  }
+
+  ctx.lineWidth = 5;
+  ctx.lineCap = 'round';
+  gainLossCache.colors.forEach((color, k) => {
+    ctx.strokeStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(canvasPoints[k].x, canvasPoints[k].y);
+    ctx.lineTo(canvasPoints[k + 1].x, canvasPoints[k + 1].y);
+    ctx.stroke();
+  });
+
+  ctx.fillStyle = '#e6edf3';
+  ctx.font = 'bold 12px Inter, Arial';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText(comparison.driver.name + ' vs ' + comparison.leader.name +
+    ': green gains, red loses', 16, TRACK_CANVAS_HEIGHT - 16);
 }
 
 function localToCanvas(posX, posZ, params, transform) {

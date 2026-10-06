@@ -131,6 +131,7 @@ async def add_or_update_lap_time(
             new_lap.sector_3_ms,
             new_lap.tyre,
             new_lap.assists,
+            lap_input.trace,
         )
     else:
         logger.warning(
