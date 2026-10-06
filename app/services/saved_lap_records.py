@@ -151,6 +151,7 @@ def save_lap_record(
     sector_2_ms=None,
     sector_3_ms=None,
     tyre=None,
+    assists=None,
     trace=None,
 ):
     new_record = {
@@ -163,6 +164,7 @@ def save_lap_record(
         "sector_2_ms": sector_2_ms,
         "sector_3_ms": sector_3_ms,
         "tyre": tyre,
+        "assists": assists,
         "recorded_at": datetime.now().isoformat(timespec="seconds"),
     }
 

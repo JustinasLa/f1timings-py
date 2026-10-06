@@ -44,6 +44,16 @@
         <div class="section-title">
           <span>Stored Times</span>
           <div class="column-settings">
+            <select class="event-date-filter" id="eventDateFilter" aria-label="Show laps from">
+              <option value="">All time</option>
+            </select>
+            <details class="qr-panel">
+              <summary class="export-csv-link" title="Scan for results">QR</summary>
+              <div class="qr-panel-body">
+                <img src="/api/qr.svg" alt="QR code linking to this leaderboard" width="160" height="160">
+                <div>Scan for results</div>
+              </div>
+            </details>
             <a class="export-csv-link" href="/api/track/records/export.csv" download title="Download this track's laps as CSV">CSV</a>
             <button class="column-settings-toggle" id="columnSettingsToggle" type="button" aria-label="Column settings" aria-expanded="false">&#9881;</button>
             <div class="column-settings-menu" id="columnSettingsMenu">
@@ -98,6 +108,13 @@
                 </span>
               </label>
               <label class="column-toggle">
+                <span class="column-toggle-label">Consistency</span>
+                <span class="column-switch">
+                  <input type="checkbox" data-column="consistency">
+                  <span class="column-switch-track"></span>
+                </span>
+              </label>
+              <label class="column-toggle">
                 <span class="column-toggle-label">Laps</span>
                 <span class="column-switch">
                   <input type="checkbox" data-column="laps" checked>
@@ -118,6 +135,7 @@
               <th class="col-sectors">Sectors</th>
               <th class="col-gap">Gap</th>
               <th class="col-interval">Int</th>
+              <th class="col-consistency" title="Standard deviation of valid lap times (needs 3+ laps)">Consistency</th>
               <th class="col-laps">Laps</th>
             </tr>
           </thead>
@@ -188,6 +206,7 @@
   <script src="/js/stored-lap-leaderboard.js"></script>
   <script src="/js/leaderboard-column-settings.js"></script>
   <script src="/js/layout-divider.js"></script>
+  <script src="/js/kiosk-mode.js"></script>
   <script src="/js/track-map-canvas.js"></script>
   <script src="/js/track-conditions-markers.js"></script>
   <script src="/js/player-name-aliases.js"></script>

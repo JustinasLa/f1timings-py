@@ -7,7 +7,9 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     },
     () => initializeColumnSettings(),
+    () => initializeEventDateFilter(),
     () => initializeLayoutDivider(),
+    () => initializeKioskMode(),
     () => initializeWebSocket(),
     () => loadCurrentTrack(),
     () => loadTrackSelectOptions(),

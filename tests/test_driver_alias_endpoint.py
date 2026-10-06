@@ -91,3 +91,12 @@ def test_clearing_unknown_alias_succeeds_when_map_is_full():
 
     resp = _set_alias("car256", "")
     assert resp.status_code == 200
+
+
+def test_renaming_existing_alias_succeeds_when_map_is_full():
+    for i in range(256):
+        routes.driver_name_aliases[routes._normalize_driver_name(f"car{i}")] = f"D{i}"
+
+    resp = _set_alias("car0", "Renamed")
+    assert resp.status_code == 200
+    assert resp.json()[routes._normalize_driver_name("car0")] == "Renamed"
