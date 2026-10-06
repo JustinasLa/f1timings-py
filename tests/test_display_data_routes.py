@@ -1,6 +1,8 @@
+import io
 import json
 
 import pytest
+import segno
 from fastapi.testclient import TestClient
 
 from app.api import display_data_routes
@@ -216,3 +218,23 @@ def test_export_csv_with_corrupt_file_is_500(isolated_state):
 
     assert resp.status_code == 500
     assert resp.json() == {"detail": "Could not read lap records for track 'monza'"}
+
+
+@pytest.mark.parametrize(
+    "base_url, expected",
+    [
+        ("http://testserver:8000", "http://192.168.1.50:8000/"),
+        ("http://testserver", "http://192.168.1.50/"),
+    ],
+)
+def test_qr_svg_encodes_lan_url(monkeypatch, base_url, expected):
+    monkeypatch.setattr(display_data_routes, "get_local_ip", lambda: "192.168.1.50")
+    expected_svg = io.BytesIO()
+    segno.make(expected).save(expected_svg, kind="svg", scale=4, border=2, xmldecl=False)
+
+    resp = TestClient(app, base_url=base_url).get("/api/qr.svg")
+
+    assert resp.status_code == 200
+    assert resp.headers["content-type"] == "image/svg+xml"
+    assert resp.content == expected_svg.getvalue()
+    assert "script-src 'self'" in resp.headers["content-security-policy"]
