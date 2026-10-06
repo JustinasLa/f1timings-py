@@ -148,7 +148,8 @@ body {
 }
 .qr-popover .qr-tile {
   display: inline-block;
-  padding: 16px;
+  /* 4-module quiet zone: the 290px image is 29 modules of 10px. */
+  padding: 40px;
   border-radius: 10px;
 }
 .qr-popover .qr-tile img {
