@@ -389,6 +389,32 @@ test('buildLapDetailRow and helpers cover empty and edge inputs', () => {
   );
 });
 
+test('expanded row shows a PB progression chart of valid laps in recorded order', () => {
+  const env = createDashboard();
+  const w = env.window;
+  w.updateLeaderboard(w.buildDriversFromRecords([
+    rec('Ann', '1:31.000', { recorded_at: '2026-01-01T10:00:00' }),
+    rec('Ann', '1:32.000', { recorded_at: '2026-01-01T10:01:00' }),
+    rec('Ann', '1:10.000', { recorded_at: '2026-01-01T10:02:00', is_valid: false }),
+    rec('Ann', '1:30.000', { recorded_at: '2026-01-01T10:03:00' }),
+    rec('Bob', '1:33.000', { recorded_at: '2026-01-01T10:00:00' })
+  ]));
+  w.toggleDriverExpand('Ann');
+  w.toggleDriverExpand('Bob');
+  const charts = env.document.querySelectorAll('#timingTableBody tr.pb-chart-row svg.pb-chart');
+  assert.equal(charts.length, 1, 'Bob has a single valid lap so no chart');
+  const points = charts[0].querySelector('polyline').getAttribute('points').split(' ');
+  assert.deepEqual(points, ['4.0,20.0', '100.0,36.0', '196.0,4.0']);
+  const pbs = Array.from(charts[0].querySelectorAll('circle.pb-chart-pb'));
+  assert.deepEqual(pbs.map((c) => c.textContent), ['PB 1:31.000', 'PB 1:30.000']);
+  assert.equal(pbs[1].getAttribute('cx'), '196.0');
+
+  assert.equal(w.buildPbProgressionRow({ name: 'A' }), '');
+  const flat = w.buildPbProgressionRow({ all_laps: [{ time: '1:30.000' }, { time: '1:30.000' }, { time: '' }] });
+  assert.match(flat, /points="4\.0,4\.0 196\.0,4\.0"/);
+  assert.equal((flat.match(/<circle/g) || []).length, 1, 'equal time is not a new PB');
+});
+
 test('delete button asks for confirmation and posts the delete', async () => {
   const env = createDashboard({
     fetch: (url) => url.startsWith('/api/track/records?') ? jsonResponse({ lap_times: [] }) : jsonResponse({ ok: true })

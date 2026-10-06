@@ -509,13 +509,52 @@ function buildDetailSectorBoxesHtml(driver, lap) {
   return '<div class="sector-box-row">' + boxes + '</div>';
 }
 
+function buildPbProgressionRow(driver) {
+  const times = [];
+  const laps = (driver.all_laps || []).slice().reverse();
+  for (const lap of laps) {
+    const seconds = parseTimeToSeconds(lap.time);
+    if (lap.is_valid !== false && isFinite(seconds)) {
+      times.push(seconds);
+    }
+  }
+  if (times.length < 2) {
+    return '';
+  }
+
+  const width = 200;
+  const height = 40;
+  const pad = 4;
+  const min = Math.min(...times);
+  const range = (Math.max(...times) - min) || 1;
+  let best = Infinity;
+  let points = '';
+  let dots = '';
+  for (let i = 0; i < times.length; i++) {
+    const x = (pad + i * (width - 2 * pad) / (times.length - 1)).toFixed(1);
+    const y = (pad + (times[i] - min) / range * (height - 2 * pad)).toFixed(1);
+    points += x + ',' + y + ' ';
+    if (times[i] < best) {
+      best = times[i];
+      dots += '<circle class="pb-chart-pb" cx="' + x + '" cy="' + y + '" r="2.5"><title>PB ' +
+        formatSeconds(times[i]) + '</title></circle>';
+    }
+  }
+
+  return `<tr class="pb-chart-row"><td colspan="9">
+      <svg class="pb-chart" width="${width}" height="${height}" role="img" aria-label="Valid lap times in order, personal bests highlighted">
+        <polyline class="pb-chart-line" points="${points.trim()}"></polyline>${dots}
+      </svg>
+    </td></tr>`;
+}
+
 function buildLapDetailRow(driver, fastestValidTime) {
   const laps = driver.recent_laps || [];
   if (laps.length === 0) {
     return `<tr class="lap-detail-row"><td colspan="9">No recent laps</td></tr>`;
   }
 
-  let rowsHtml = '';
+  let rowsHtml = buildPbProgressionRow(driver);
   for (let i = 0; i < laps.length; i++) {
     const lap = laps[i];
     const isValid = lap.is_valid !== false;
