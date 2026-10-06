@@ -354,7 +354,26 @@ def _update_driver_alias(alias_key: str, display_name: str) -> Dict[str, str]:
 
 try:
     from f1_24_telemetry.listener import TelemetryListener
-    from f1_24_telemetry.packets import PacketHeader, HEADER_FIELD_TO_PACKET_TYPE
+    from f1_24_telemetry.packets import (
+        HEADER_FIELD_TO_PACKET_TYPE,
+        Packet,
+        PacketHeader,
+        PacketSessionData,
+        WeatherForecastSample,
+    )
+
+    # F1 24 sends 64 weather forecast samples (753-byte packet); the library
+    # still declares F1 23's 56, shifting sessionLinkIdentifier, timeOfDay etc.
+    class PacketSessionData24(Packet):
+        _fields_ = [
+            (name, WeatherForecastSample * 64 if name == "weather_forecast_samples" else ctype)
+            for name, ctype in PacketSessionData._fields_
+        ]
+
+    HEADER_FIELD_TO_PACKET_TYPE = {
+        **HEADER_FIELD_TO_PACKET_TYPE,
+        (2024, 1, 1): PacketSessionData24,
+    }
 
     F1_TELEMETRY_AVAILABLE = True
 except ImportError:
