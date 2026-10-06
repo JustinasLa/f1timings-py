@@ -86,6 +86,8 @@ class LapTimeInput(BaseModel):
     sector_2_ms: Optional[int] = None
     sector_3_ms: Optional[int] = None
     tyre: Optional[str] = None
+    # [lap_distance_m, elapsed_ms, speed_kph, throttle, brake] every ~25 m.
+    trace: Optional[List[List[float]]] = None
 
     @field_validator("time")
     def validate_time_format(cls, v):

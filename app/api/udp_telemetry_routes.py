@@ -20,6 +20,7 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 SECTOR_PACE_IDLE_SECONDS = 45
+LAP_TRACE_STEP_M = 25
 SOURCE_STALE_SECONDS = 10
 
 
@@ -516,6 +517,8 @@ def _get_source_state(source_id: str) -> Dict[str, Any]:
                 "last_current_lap_ms": [0] * 22,
                 "last_sector_progress_time": [0.0] * 22,
                 "live_display_owner": [None] * 22,
+                "lap_traces": [[] for _ in range(22)],
+                "car_inputs": [(0, 0.0, 0.0)] * 22,
                 "raw_packets": {},
             }
         telemetry_sources[source_id]["last_seen"] = time.time()
@@ -1123,6 +1126,8 @@ def telemetry_listener_worker(host: str, port: int, stop_event: threading.Event)
                                         live_sector2_ms[i] = 0
 
                                         finished_invalid = source_state["live_lap_invalid_flag"][i]
+                                        finished_trace = source_state["lap_traces"][i]
+                                        source_state["lap_traces"][i] = []
                                         source_state["live_lap_invalid_flag"][i] = False
 
                                         if lap_owner_names[i] is not None:
@@ -1178,6 +1183,8 @@ def telemetry_listener_worker(host: str, port: int, stop_event: threading.Event)
                                                     sector_2_ms=saved_s2,
                                                     sector_3_ms=saved_s3,
                                                     tyre=TYRE_COMPOUND_MAP.get(participant.get("visualTyreCompound")),
+                                                    # Drop traces that did not start at the line (joined mid-lap).
+                                                    trace=finished_trace if finished_trace and finished_trace[0][0] < LAP_TRACE_STEP_M else None,
                                                 )
                                                 _submit_to_main_loop(
                                                     add_or_update_lap_time(
@@ -1207,12 +1214,32 @@ def telemetry_listener_worker(host: str, port: int, stop_event: threading.Event)
                                 if lap_invalid:
                                     source_state["live_lap_invalid_flag"][i] = True
 
+                                # Flashbacks and restarts rewind the lap clock: drop the undone samples.
+                                lap_trace = source_state["lap_traces"][i]
+                                while lap_trace and lap_trace[-1][1] > current_lap_ms:
+                                    lap_trace.pop()
+                                lap_distance = lap_data_store[i].get("lapDistance", 0.0)
+                                if lap_distance >= 0 and (
+                                    not lap_trace or lap_distance >= lap_trace[-1][0] + LAP_TRACE_STEP_M
+                                ):
+                                    speed, throttle, brake = source_state["car_inputs"][i]
+                                    lap_trace.append(
+                                        [round(lap_distance), current_lap_ms, speed, round(throttle, 2), round(brake, 2)]
+                                    )
+
                         logger.debug(
                             f"Updated lap_data_store for {len(packet.lap_data) if hasattr(packet, 'lap_data') else 'N/A'} cars."
                         )
                     elif packet_id == 6:
                         lap_top_speeds = source_state["lap_top_speeds"]
+                        car_inputs = source_state["car_inputs"]
                         for i, car_telemetry in enumerate(packet.car_telemetry_data):
+                            if i < len(car_inputs):
+                                car_inputs[i] = (
+                                    getattr(car_telemetry, "speed", 0),
+                                    getattr(car_telemetry, "throttle", 0.0),
+                                    getattr(car_telemetry, "brake", 0.0),
+                                )
                             if i < len(lap_top_speeds) and hasattr(car_telemetry, "speed"):
                                 lap_top_speeds[i] = max(
                                     lap_top_speeds[i],
