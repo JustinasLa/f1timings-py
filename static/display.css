@@ -523,6 +523,10 @@ body.layout-resizing {
   color: var(--red);
   border-color: var(--red);
 }
+.pb-chart-row td { background: var(--bg3); padding: 4px 8px; }
+.pb-chart { display: block; overflow: visible; }
+.pb-chart-line { fill: none; stroke: var(--text-muted); stroke-width: 1.5; }
+.pb-chart-pb { fill: var(--purple); }
 .lap-detail-when { font-size: 9.6px; }
 .lap-detail-row .td-laps { font-size: 9.6px; }
 .lap-detail-row .laptime-badge { font-size: 10.4px; }
