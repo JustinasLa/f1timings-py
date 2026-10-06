@@ -46,6 +46,20 @@ test('formatTyreTag renders an escaped compound badge or nothing', () => {
   );
 });
 
+test('formatAssistsTag renders an escaped assists badge or nothing', () => {
+  const { window: w } = createDashboard();
+  assert.equal(w.formatAssistsTag(undefined), '');
+  assert.equal(w.formatAssistsTag([]), '');
+  assert.equal(
+    w.formatAssistsTag(['TC', 'RL']),
+    '<span class="assists-tag" title="Assists: TC RL">TC RL</span>'
+  );
+  assert.equal(
+    w.formatAssistsTag(['<x"']),
+    '<span class="assists-tag" title="Assists: &lt;x&quot;">&lt;x"</span>'
+  );
+});
+
 test('buildPotentialTitle shows time left on the table vs the best lap', () => {
   const { window: w } = createDashboard();
   const best = { best_sectors: { s1: 30000, s2: 30000, s3: 23456 } };
@@ -150,6 +164,29 @@ test('buildSectorBoxesHtml prefers live sectors and uses personal/overall bests'
   );
 });
 
+test('buildSectorBoxesHtml appends a live delta to the personal best lap', () => {
+  const env = createDashboard();
+  const w = env.window;
+  const best = { is_valid: true, sector_1_ms: 30000, sector_2_ms: 25000, sector_3_ms: 20000 };
+  env.set('leaderboardLiveLapSectors', {
+    Ahead: { s1: 29800, s2: 0, s3: 0, isValid: true },
+    Behind: { s1: 29800, s2: 25500, s3: 0, isValid: true },
+    Waiting: { s1: 0, s2: 0, s3: 0, isValid: true }
+  });
+
+  assert.match(
+    w.buildSectorBoxesHtml({ name: 'Ahead' }, best),
+    /<\/div><span class="live-delta delta-ahead" title="Live delta to personal best">-0\.200s<\/span>$/
+  );
+  assert.match(w.buildSectorBoxesHtml({ name: 'Behind' }, best), /delta-behind"[^>]*>\+0\.300s</);
+  assert.doesNotMatch(w.buildSectorBoxesHtml({ name: 'Waiting' }, best), /live-delta/);
+  assert.doesNotMatch(w.buildSectorBoxesHtml({ name: 'Ahead' }, { ...best, is_valid: false }), /live-delta/);
+  assert.doesNotMatch(w.buildSectorBoxesHtml({ name: 'Ahead' }, { is_valid: true }), /live-delta/);
+  assert.doesNotMatch(w.buildSectorBoxesHtml({ name: 'Stored' }, best), /live-delta/);
+
+  assert.equal(w.liveDeltaMs({ s1: 30000, s2: 1000 }, { sector_1_ms: 30000 }), 0, 'falls back to S1 when best has no S2');
+});
+
 test('recomputeBestSectors computes personal and overall bests', () => {
   const env = createDashboard();
   env.window.recomputeBestSectors([
@@ -188,7 +225,7 @@ test('buildDriversFromRecords groups laps, picks best lap and marks the fastest'
     rec('Ann', '1:25.000', { recorded_at: '2026-01-01T10:05:00', team: 'Scuderia Ferrari', sector_1_ms: 29000, sector_2_ms: 31000, sector_3_ms: 25000 }),
     rec('Ann', '1:28.000', { recorded_at: '2026-01-01T10:05:00' }),
     rec('Ann', '1:20.000', { is_valid: false, sector_1_ms: 1, recorded_at: '2026-01-01T09:00:00' }),
-    rec('Ann', '1:24.000', { team: undefined, tyre: 'Medium' }),
+    rec('Ann', '1:24.000', { team: undefined, tyre: 'Medium', assists: ['ABS'] }),
     { time: '1:40.000' },
     rec('Bob', '1:50.000', { is_valid: false }),
     rec('Bob', '1:45.000')
@@ -208,6 +245,8 @@ test('buildDriversFromRecords groups laps, picks best lap and marks the fastest'
   assert.equal(ann.recent_laps[4].recorded_at, '');
   assert.equal(ann.lap_times[0].tyre, 'Medium');
   assert.equal(ann.recent_laps[4].tyre, 'Medium');
+  assert.deepEqual(ann.lap_times[0].assists, ['ABS']);
+  assert.deepEqual(ann.recent_laps[4].assists, ['ABS']);
 
   assert.equal(drivers.Unknown.team, 'Unknown Team');
   assert.equal(drivers.Unknown.lap_times[0].is_fastest, false);

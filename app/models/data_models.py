@@ -14,6 +14,7 @@ class LapTime(BaseModel):
     sector_2_ms: Optional[int] = None
     sector_3_ms: Optional[int] = None
     tyre: Optional[str] = None
+    assists: Optional[List[str]] = None
 
     @computed_field
     @property
@@ -86,6 +87,7 @@ class LapTimeInput(BaseModel):
     sector_2_ms: Optional[int] = None
     sector_3_ms: Optional[int] = None
     tyre: Optional[str] = None
+    assists: Optional[List[str]] = None
 
     @field_validator("time")
     def validate_time_format(cls, v):

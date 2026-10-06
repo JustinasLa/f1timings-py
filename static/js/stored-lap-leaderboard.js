@@ -21,6 +21,15 @@ function formatTyreTag(tyre) {
     escapeAttr(name) + '">' + escapeHtml(name.charAt(0)) + '</span>';
 }
 
+function formatAssistsTag(assists) {
+  if (!Array.isArray(assists) || assists.length === 0) {
+    return '';
+  }
+  const text = assists.join(' ');
+  return '<span class="assists-tag" title="Assists: ' + escapeAttr(text) + '">' +
+    escapeHtml(text) + '</span>';
+}
+
 function potentialMs(driver) {
   const best = driver.best_sectors;
   if (!best || !(best.s1 > 0 && best.s2 > 0 && best.s3 > 0)) {
@@ -183,9 +192,38 @@ function addLiveOnlyDrivers(drivers) {
   return mergedDrivers;
 }
 
+function liveDeltaMs(live, bestLap) {
+  if (bestLap.is_valid === false) {
+    return null;
+  }
+  const bestS1 = bestLap.sector_1_ms || 0;
+  const bestS2 = bestLap.sector_2_ms || 0;
+  if (live.s1 > 0 && live.s2 > 0 && bestS1 > 0 && bestS2 > 0) {
+    return live.s1 + live.s2 - bestS1 - bestS2;
+  }
+  if (live.s1 > 0 && bestS1 > 0) {
+    return live.s1 - bestS1;
+  }
+  return null;
+}
+
+function buildLiveDeltaHtml(live, bestLap) {
+  const deltaMs = liveDeltaMs(live, bestLap);
+  if (deltaMs === null) {
+    return '';
+  }
+  const deltaClass = deltaMs <= 0 ? 'delta-ahead' : 'delta-behind';
+  const sign = deltaMs <= 0 ? '-' : '+';
+  return '<span class="live-delta ' + deltaClass + '" title="Live delta to personal best">' +
+    sign + formatGap(Math.abs(deltaMs) / 1000) + '</span>';
+}
+
 function buildSectorBoxesHtml(driver, lap) {
   let display = leaderboardLiveLapSectors[driver.name];
-  if (!display) {
+  let deltaHtml = '';
+  if (display) {
+    deltaHtml = buildLiveDeltaHtml(display, lap);
+  } else {
     display = getDisplaySectors(driver, lap);
   }
 
@@ -199,7 +237,7 @@ function buildSectorBoxesHtml(driver, lap) {
   boxes += buildOneSectorBox(display.s1, personalBest.s1, overallBest.s1, display.isValid);
   boxes += buildOneSectorBox(display.s2, personalBest.s2, overallBest.s2, display.isValid);
   boxes += buildOneSectorBox(display.s3, personalBest.s3, overallBest.s3, display.isValid);
-  return '<div class="sector-box-row">' + boxes + '</div>';
+  return '<div class="sector-box-row">' + boxes + '</div>' + deltaHtml;
 }
 
 function recomputeBestSectors(rows) {
@@ -254,7 +292,8 @@ function buildDriversFromRecords(records) {
       sector_1_ms: record.sector_1_ms,
       sector_2_ms: record.sector_2_ms,
       sector_3_ms: record.sector_3_ms,
-      tyre: record.tyre
+      tyre: record.tyre,
+      assists: record.assists
     };
 
     const lapDetail = {
@@ -265,7 +304,8 @@ function buildDriversFromRecords(records) {
       sector_1_ms: record.sector_1_ms,
       sector_2_ms: record.sector_2_ms,
       sector_3_ms: record.sector_3_ms,
-      tyre: record.tyre
+      tyre: record.tyre,
+      assists: record.assists
     };
 
     if (!drivers[driverName]) {
@@ -436,7 +476,7 @@ function updateLeaderboard(drivers) {
         </div>
       </td>
       <td class="td-laps col-topspeed">${formatTopSpeed(lap.fastest_speed_kph)}</td>
-      <td class="col-bestlap">${lapTimeHtml}${formatTyreTag(lap.tyre)}</td>
+      <td class="col-bestlap">${lapTimeHtml}${formatTyreTag(lap.tyre)}${formatAssistsTag(lap.assists)}</td>
       <td class="td-laps col-potential"${buildPotentialTitle(driver, lap)}>${formatPotentialTime(driver)}</td>
       <td class="col-sectors sectors-cell">${buildSectorBoxesHtml(driver, lap)}</td>
       <td class="td-laps col-gap">${gap}</td>
@@ -560,7 +600,7 @@ function buildLapDetailRow(driver, fastestValidTime) {
       <td class="lap-detail-when">${escapeHtml(clock)}</td>
       <td class="td-laps col-topspeed">${formatTopSpeed(lap.fastest_speed_kph)}</td>
       <td class="col-bestlap">
-        <span class="laptime-badge ${badgeClass}">${formatTime(lap.time)}</span>${formatTyreTag(lap.tyre)}
+        <span class="laptime-badge ${badgeClass}">${formatTime(lap.time)}</span>${formatTyreTag(lap.tyre)}${formatAssistsTag(lap.assists)}
       </td>
       <td class="td-laps col-potential"></td>
       <td class="col-sectors sectors-cell">${buildDetailSectorBoxesHtml(driver, lap)}</td>
