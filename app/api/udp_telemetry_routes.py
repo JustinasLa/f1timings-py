@@ -507,6 +507,7 @@ def _get_source_state(source_id: str) -> Dict[str, Any]:
                 "last_seen": time.time(),
                 "last_lap_times": [0] * 22,
                 "lap_owner_names": [None] * 22,
+                "lap_start_tyres": [None] * 22,
                 "lap_top_speeds": [0.0] * 22,
                 "saved_signatures": [],
                 "lap_tracking_started": [False] * 22,
@@ -1177,7 +1178,10 @@ def telemetry_listener_worker(host: str, port: int, stop_event: threading.Event)
                                                     sector_1_ms=saved_s1,
                                                     sector_2_ms=saved_s2,
                                                     sector_3_ms=saved_s3,
-                                                    tyre=TYRE_COMPOUND_MAP.get(participant.get("visualTyreCompound")),
+                                                    tyre=TYRE_COMPOUND_MAP.get(
+                                                        source_state["lap_start_tyres"][i]
+                                                        or participant.get("visualTyreCompound")
+                                                    ),
                                                 )
                                                 _submit_to_main_loop(
                                                     add_or_update_lap_time(
@@ -1203,6 +1207,8 @@ def telemetry_listener_worker(host: str, port: int, stop_event: threading.Event)
 
                                 if current_s1 == 0:
                                     lap_owner_names[i] = current_display_name
+                                    # Sector 1 only, so an in-lap pit stop doesn't relabel the lap just driven.
+                                    source_state["lap_start_tyres"][i] = participant.get("visualTyreCompound")
 
                                 if lap_invalid:
                                     source_state["live_lap_invalid_flag"][i] = True

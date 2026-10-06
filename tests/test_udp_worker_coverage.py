@@ -444,6 +444,21 @@ def test_lap_saved_with_visual_tyre_compound(monkeypatch, saved_laps):
     assert saved_laps[0][0].tyre == "Soft"
 
 
+def test_lap_keeps_tyre_from_lap_start_when_changed_mid_lap(monkeypatch, saved_laps):
+    def status(compound):
+        return SimpleNamespace(
+            header=SimpleNamespace(packet_id=7),
+            car_status_data=[SimpleNamespace(visual_tyre_compound=compound)],
+        )
+
+    run_worker(
+        monkeypatch,
+        [participants("Hamilton"), status(16), lap(0), lap(s1=25000), status(17), lap(75000)],
+    )
+
+    assert saved_laps[0][0].tyre == "Soft"
+
+
 def test_lap_saved_without_tyre_when_compound_unknown(monkeypatch, saved_laps):
     run_worker(monkeypatch, [participants("Hamilton"), lap(0), lap(75000)])
 
