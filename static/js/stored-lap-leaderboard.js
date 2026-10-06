@@ -337,7 +337,7 @@ function updateLeaderboard(drivers) {
     Object.keys(leaderboardDrivers).length;
 
   if (allRows.length === 0) {
-    const emptyRowsHtml = `<tr class="no-data-row"><td colspan="8">No timing data recorded for this track</td></tr>`;
+    const emptyRowsHtml = `<tr class="no-data-row"><td colspan="9">No timing data recorded for this track</td></tr>`;
     if (emptyRowsHtml !== lastLeaderboardRowsHtml) {
       tbody.innerHTML = emptyRowsHtml;
       lastLeaderboardRowsHtml = emptyRowsHtml;
@@ -358,6 +358,7 @@ function updateLeaderboard(drivers) {
     allRows.find(r => r.lap.is_valid)?.lap.time
   );
 
+  let previousValidTime = Infinity;
   let rowsHtml = '';
   for (let i = 0; i < allRows.length; i++) {
     const driver = allRows[i].driver;
@@ -375,6 +376,13 @@ function updateLeaderboard(drivers) {
     let gap = (!lap.is_valid || i === 0 || !isFinite(fastestValidTime))
       ? '—'
       : '+' + formatGap(lapSec - fastestValidTime);
+    let interval = '—';
+    if (lap.is_valid && !isLiveOnly && isFinite(lapSec)) {
+      if (isFinite(previousValidTime)) {
+        interval = '+' + formatGap(lapSec - previousValidTime);
+      }
+      previousValidTime = lapSec;
+    }
     let lapCountText = String(driver.lap_count || 1);
     let rowStateClass = !lap.is_valid ? 'invalid-row' : lap.is_fastest ? 'fastest-row' : '';
 
@@ -402,6 +410,7 @@ function updateLeaderboard(drivers) {
       <td class="td-laps col-potential">${formatPotentialTime(driver)}</td>
       <td class="col-sectors sectors-cell">${buildSectorBoxesHtml(driver, lap)}</td>
       <td class="td-laps col-gap">${gap}</td>
+      <td class="td-laps col-interval">${interval}</td>
       <td class="td-laps col-laps">${lapCountText}</td>
     </tr>`;
 
@@ -486,7 +495,7 @@ function buildDetailSectorBoxesHtml(driver, lap) {
 function buildLapDetailRow(driver, fastestValidTime) {
   const laps = driver.recent_laps || [];
   if (laps.length === 0) {
-    return `<tr class="lap-detail-row"><td colspan="8">No recent laps</td></tr>`;
+    return `<tr class="lap-detail-row"><td colspan="9">No recent laps</td></tr>`;
   }
 
   let rowsHtml = '';
@@ -525,6 +534,7 @@ function buildLapDetailRow(driver, fastestValidTime) {
       <td class="td-laps col-potential"></td>
       <td class="col-sectors sectors-cell">${buildDetailSectorBoxesHtml(driver, lap)}</td>
       <td class="td-laps col-gap">${gap}</td>
+      <td class="td-laps col-interval"></td>
       <td class="td-laps col-laps"></td>
     </tr>`;
   }

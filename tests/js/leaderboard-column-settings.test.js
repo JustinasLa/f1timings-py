@@ -22,7 +22,7 @@ test('initializeColumnSettings applies defaults when nothing is saved', () => {
   env.window.initializeColumnSettings();
   assert.deepEqual(hiddenColumns(env), ['hide-col-potential']);
   assert.deepEqual(switches(env), {
-    pos: true, topspeed: true, bestlap: true, potential: false, sectors: true, gap: true, laps: true
+    pos: true, topspeed: true, bestlap: true, potential: false, sectors: true, gap: true, interval: true, laps: true
   });
 });
 
