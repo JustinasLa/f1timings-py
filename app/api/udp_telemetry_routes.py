@@ -91,7 +91,8 @@ TRACK_ID_TO_NAME = {
     32: "qatar",
 }
 
-SHORT_LAYOUT_TRACK_IDS = {21, 22, 23, 24}
+# Short (21-24) and reverse (39-41) layouts have no map or records of their own.
+SHORT_LAYOUT_TRACK_IDS = {21, 22, 23, 24, 39, 40, 41}
 
 _last_auto_set_track_id = None
 
