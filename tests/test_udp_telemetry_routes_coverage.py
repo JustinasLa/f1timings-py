@@ -114,15 +114,16 @@ def test_submit_logs_warning_when_future_cancelled(monkeypatch, caplog):
 
 
 def test_parse_packet_with_sender_unpacks_real_packet():
-    from f1_24_telemetry.packets import HEADER_FIELD_TO_PACKET_TYPE
-
-    cls = HEADER_FIELD_TO_PACKET_TYPE[(2024, 1, 1)]
+    cls = routes.HEADER_FIELD_TO_PACKET_TYPE[(2024, 1, 1)]
     packet = cls()
     packet.header.packet_format = 2024
     packet.header.packet_version = 1
     packet.header.packet_id = 1
     packet.track_id = 11
     raw = bytes(packet)
+    # F1 24 spec: 753 bytes, 64 forecast samples, timeOfDay at offset 696
+    assert len(raw) == 753
+    raw = raw[:696] + (720).to_bytes(4, "little") + raw[700:]
 
     calls = []
 
@@ -138,6 +139,7 @@ def test_parse_packet_with_sender_unpacks_real_packet():
     assert isinstance(parsed, cls)
     assert parsed.header.packet_id == 1
     assert parsed.track_id == 11
+    assert parsed.time_of_day == 720
 
 
 class _Inner(ctypes.Structure):
