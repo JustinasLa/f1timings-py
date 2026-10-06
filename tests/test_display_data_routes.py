@@ -181,3 +181,38 @@ def test_delete_record_with_corrupt_file_is_500(isolated_state):
 
     assert resp.status_code == 500
     assert resp.json() == {"detail": "Could not update lap records for track 'monza'"}
+
+
+def test_export_csv_without_track_is_404():
+    assert client.get("/api/track/records/export.csv").status_code == 404
+
+
+def test_export_csv_returns_laps_and_neutralises_formulas(isolated_state):
+    app_data.track_name = "Monza"
+    _write_records(isolated_state, "Monza", [
+        {"driver": '=HYPERLINK("x")', "team": "+Ferrari", "time": "1:21.000",
+         "is_valid": True, "fastest_speed_kph": 340, "sector_1_ms": None},
+        {"driver": "Max", "team": "Red Bull", "time": "1:20.500", "is_valid": False},
+    ])
+
+    resp = client.get("/api/track/records/export.csv")
+
+    assert resp.status_code == 200
+    assert resp.headers["content-type"].startswith("text/csv")
+    assert resp.headers["content-disposition"] == 'attachment; filename="monza_laps.csv"'
+    rows = resp.text.splitlines()
+    assert rows[0] == (
+        "driver,team,time,is_valid,fastest_speed_kph,"
+        "sector_1_ms,sector_2_ms,sector_3_ms,recorded_at"
+    )
+    assert rows[1] == "\"'=HYPERLINK(\"\"x\"\")\",'+Ferrari,1:21.000,True,340,,,,"
+    assert rows[2] == "Max,Red Bull,1:20.500,False,,,,,"
+
+
+def test_export_csv_with_corrupt_file_is_500(isolated_state):
+    (isolated_state / "monza.json").write_text("{}", encoding="utf-8")
+
+    resp = client.get("/api/track/records/export.csv?track=monza")
+
+    assert resp.status_code == 500
+    assert resp.json() == {"detail": "Could not read lap records for track 'monza'"}

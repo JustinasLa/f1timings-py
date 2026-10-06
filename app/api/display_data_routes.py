@@ -1,7 +1,9 @@
 import asyncio
+import csv
+import io
 import logging
 from typing import Dict, Optional
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 from pydantic import BaseModel
 
 from app.models.data_models import (
@@ -27,7 +29,11 @@ class LapDeleteInput(BaseModel):
     recorded_at: Optional[str] = None
     track: Optional[str] = None
 from app.services.track_map_loader import track_service
-from app.services.saved_lap_records import load_track_records, delete_lap_record
+from app.services.saved_lap_records import (
+    load_track_records,
+    delete_lap_record,
+    make_safe_file_name,
+)
 from app.api.udp_telemetry_routes import get_live_driver_data_for_api
 
 logger = logging.getLogger(__name__)
@@ -99,6 +105,56 @@ async def get_track_records_endpoint(track: str = None):
         lap_times = []
 
     return {"track": track_name, "lap_times": lap_times}
+
+
+CSV_EXPORT_COLUMNS = [
+    "driver",
+    "team",
+    "time",
+    "is_valid",
+    "fastest_speed_kph",
+    "sector_1_ms",
+    "sector_2_ms",
+    "sector_3_ms",
+    "recorded_at",
+]
+
+
+def csv_safe_cell(value):
+    # Spreadsheet apps execute cells starting with these as formulas.
+    text = "" if value is None else str(value)
+    if text and text[0] in "=+-@\t\r":
+        return "'" + text
+    return text
+
+
+@router.get("/api/track/records/export.csv", tags=["Track"])
+async def export_track_records_endpoint(track: str = None):
+    track_name = track if track else await get_track()
+    if not track_name:
+        raise HTTPException(status_code=404, detail="No track name set or specified")
+
+    try:
+        lap_times = await asyncio.to_thread(load_track_records, track_name)
+    except (OSError, ValueError) as error:
+        logger.error(f"Could not read lap times for '{track_name}': {error}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Could not read lap records for track '{track_name}'",
+        )
+
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(CSV_EXPORT_COLUMNS)
+    for record in lap_times:
+        writer.writerow([csv_safe_cell(record.get(column)) for column in CSV_EXPORT_COLUMNS])
+
+    file_name = make_safe_file_name(track_name).removesuffix(".json") + "_laps.csv"
+    return Response(
+        content=buffer.getvalue(),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{file_name}"'},
+    )
 
 
 @router.post("/api/track/records/delete", tags=["Track"])
