@@ -20,6 +20,7 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 SECTOR_PACE_IDLE_SECONDS = 45
+LAP_TRACE_STEP_M = 25
 SOURCE_STALE_SECONDS = 10
 
 
@@ -91,7 +92,8 @@ TRACK_ID_TO_NAME = {
     32: "qatar",
 }
 
-SHORT_LAYOUT_TRACK_IDS = {21, 22, 23, 24}
+# Short (21-24) and reverse (39-41) layouts have no map or records of their own.
+SHORT_LAYOUT_TRACK_IDS = {21, 22, 23, 24, 39, 40, 41}
 
 _last_auto_set_track_id = None
 
@@ -103,19 +105,6 @@ ESSENTIAL_PACKET_IDS = {
     4,
     6,
     7,
-}
-
-OPTIONAL_PACKET_IDS = {
-    3,
-    5,
-    6,
-    8,
-    9,
-    10,
-    11,
-    12,
-    13,
-    14,
 }
 
 ENABLE_PACKET_FILTERING = True
@@ -135,6 +124,22 @@ WEATHER_MAP = {
     4: "Heavy Rain",
     5: "Storm",
 }
+
+
+# Car Status visualTyreCompound (F1 modern/classic); F2 codes fall through to None.
+TYRE_COMPOUND_MAP = {16: "Soft", 17: "Medium", 18: "Hard", 7: "Inter", 8: "Wet"}
+
+
+def _lap_assists(participant: dict, racing_line: int):
+    """Assists on for a lap; None when Car Status has not arrived yet."""
+    if "tractionControl" not in participant:
+        return None
+    flags = (
+        ("TC", participant["tractionControl"]),
+        ("ABS", participant.get("antiLockBrakes")),
+        ("RL", racing_line),
+    )
+    return [name for name, on in flags if on]
 
 
 def get_weather_name(weather_id: int) -> str:
@@ -354,7 +359,26 @@ def _update_driver_alias(alias_key: str, display_name: str) -> Dict[str, str]:
 
 try:
     from f1_24_telemetry.listener import TelemetryListener
-    from f1_24_telemetry.packets import PacketHeader, HEADER_FIELD_TO_PACKET_TYPE
+    from f1_24_telemetry.packets import (
+        HEADER_FIELD_TO_PACKET_TYPE,
+        Packet,
+        PacketHeader,
+        PacketSessionData,
+        WeatherForecastSample,
+    )
+
+    # F1 24 sends 64 weather forecast samples (753-byte packet); the library
+    # still declares F1 23's 56, shifting sessionLinkIdentifier, timeOfDay etc.
+    class PacketSessionData24(Packet):
+        _fields_ = [
+            (name, WeatherForecastSample * 64 if name == "weather_forecast_samples" else ctype)
+            for name, ctype in PacketSessionData._fields_
+        ]
+
+    HEADER_FIELD_TO_PACKET_TYPE = {
+        **HEADER_FIELD_TO_PACKET_TYPE,
+        (2024, 1, 1): PacketSessionData24,
+    }
 
     F1_TELEMETRY_AVAILABLE = True
 except ImportError:
@@ -381,6 +405,9 @@ enhanced_session_data_store: dict = {}
 lap_data_store: list = []
 telemetry_sources: Dict[str, Dict[str, Any]] = {}
 telemetry_sources_lock = threading.Lock()
+# Serializes /start and /stop so a stop can't clear state mid-start (or wipe a
+# listener started while it was awaiting the old thread's join).
+_listener_control_lock = asyncio.Lock()
 DRIVER_ALIASES_FILE = "driver_aliases.json"
 _driver_aliases_lock = threading.Lock()
 
@@ -431,9 +458,6 @@ def _submit_to_main_loop(coro, what: str):
 
     future.add_done_callback(_log_failure)
     return future
-
-packets_processed_count = 0
-packets_filtered_count = 0
 
 
 def _normalize_driver_name(name: str) -> str:
@@ -496,6 +520,7 @@ def _get_source_state(source_id: str) -> Dict[str, Any]:
                 "last_seen": time.time(),
                 "last_lap_times": [0] * 22,
                 "lap_owner_names": [None] * 22,
+                "lap_start_tyres": [None] * 22,
                 "lap_top_speeds": [0.0] * 22,
                 "saved_signatures": [],
                 "lap_tracking_started": [False] * 22,
@@ -505,15 +530,38 @@ def _get_source_state(source_id: str) -> Dict[str, Any]:
                 "last_current_lap_ms": [0] * 22,
                 "last_sector_progress_time": [0.0] * 22,
                 "live_display_owner": [None] * 22,
+                "lap_traces": [[] for _ in range(22)],
+                "car_inputs": [(0, 0.0, 0.0)] * 22,
                 "raw_packets": {},
             }
         telemetry_sources[source_id]["last_seen"] = time.time()
         return telemetry_sources[source_id]
 
 
+EXPECTED_PACKET_FORMAT = 2024
+_FORMAT_ERROR_PREFIX = "UDP format "
+_warned_packet_formats: set = set()
+
+
+class UnsupportedPacketFormat(Exception):
+    pass
+
+
 def _parse_packet_with_sender(listener_instance):
+    global listener_error
     raw_packet, sender = listener_instance.socket.recvfrom(2048)
     header = PacketHeader.from_buffer_copy(raw_packet)
+    if header.packet_format != EXPECTED_PACKET_FORMAT:
+        listener_error = f"{_FORMAT_ERROR_PREFIX}{header.packet_format}, need {EXPECTED_PACKET_FORMAT}"
+        if header.packet_format not in _warned_packet_formats:
+            _warned_packet_formats.add(header.packet_format)
+            logger.warning(
+                f"Received UDP format {header.packet_format}; set Telemetry Settings > "
+                f"UDP Format to {EXPECTED_PACKET_FORMAT} in game. Skipping these packets."
+            )
+        raise UnsupportedPacketFormat(header.packet_format)
+    if listener_error and listener_error.startswith(_FORMAT_ERROR_PREFIX):
+        listener_error = None
     key = (header.packet_format, header.packet_version, header.packet_id)
     return HEADER_FIELD_TO_PACKET_TYPE[key].unpack(raw_packet), sender
 
@@ -587,7 +635,7 @@ def get_local_ip():
 
 
 def telemetry_listener_worker(host: str, port: int, stop_event: threading.Event):
-    global listener_error, active_drivers_count, packets_processed_count, packets_filtered_count
+    global listener_error, active_drivers_count
     global latest_car_positions, participant_data_store, session_data_store, enhanced_session_data_store, lap_data_store, telemetry_sources
 
     listener_instance = None
@@ -644,13 +692,10 @@ def telemetry_listener_worker(host: str, port: int, stop_event: threading.Event)
                             }
 
                     if not should_process_packet(packet_id):
-                        packets_filtered_count += 1
                         logger.debug(
                             f"Packet ID {packet_id} filtered out for performance"
                         )
                         continue
-
-                    packets_processed_count += 1
 
                     if packet_id == 0:
                         logger.debug(
@@ -698,6 +743,7 @@ def telemetry_listener_worker(host: str, port: int, stop_event: threading.Event)
                                 "sessionTimeLeft": packet.session_time_left,
                                 "sessionDuration": packet.session_duration,
                                 "pitSpeedLimit": packet.pit_speed_limit,
+                                "dynamicRacingLine": getattr(packet, "dynamic_racing_line", 0),
                             }
                         )
 
@@ -1115,6 +1161,8 @@ def telemetry_listener_worker(host: str, port: int, stop_event: threading.Event)
                                         live_sector2_ms[i] = 0
 
                                         finished_invalid = source_state["live_lap_invalid_flag"][i]
+                                        finished_trace = source_state["lap_traces"][i]
+                                        source_state["lap_traces"][i] = []
                                         source_state["live_lap_invalid_flag"][i] = False
 
                                         if lap_owner_names[i] is not None:
@@ -1169,6 +1217,19 @@ def telemetry_listener_worker(host: str, port: int, stop_event: threading.Event)
                                                     sector_1_ms=saved_s1,
                                                     sector_2_ms=saved_s2,
                                                     sector_3_ms=saved_s3,
+                                                    tyre=TYRE_COMPOUND_MAP.get(
+                                                        source_state["lap_start_tyres"][i]
+                                                        or participant.get("visualTyreCompound")
+                                                    ),
+                                                    # Session racing line is the local player's setting only.
+                                                    assists=_lap_assists(
+                                                        participant,
+                                                        source_state["session"].get("dynamicRacingLine")
+                                                        if i == getattr(packet.header, "player_car_index", None)
+                                                        else 0,
+                                                    ),
+                                                    # Drop traces that did not start at the line (joined mid-lap).
+                                                    trace=finished_trace if finished_trace and finished_trace[0][0] < LAP_TRACE_STEP_M else None,
                                                 )
                                                 _submit_to_main_loop(
                                                     add_or_update_lap_time(
@@ -1194,16 +1255,38 @@ def telemetry_listener_worker(host: str, port: int, stop_event: threading.Event)
 
                                 if current_s1 == 0:
                                     lap_owner_names[i] = current_display_name
+                                    # Sector 1 only, so an in-lap pit stop doesn't relabel the lap just driven.
+                                    source_state["lap_start_tyres"][i] = participant.get("visualTyreCompound")
 
                                 if lap_invalid:
                                     source_state["live_lap_invalid_flag"][i] = True
+
+                                # Flashbacks and restarts rewind the lap clock: drop the undone samples.
+                                lap_trace = source_state["lap_traces"][i]
+                                while lap_trace and lap_trace[-1][1] > current_lap_ms:
+                                    lap_trace.pop()
+                                lap_distance = lap_data_store[i].get("lapDistance", 0.0)
+                                if lap_distance >= 0 and (
+                                    not lap_trace or lap_distance >= lap_trace[-1][0] + LAP_TRACE_STEP_M
+                                ):
+                                    speed, throttle, brake = source_state["car_inputs"][i]
+                                    lap_trace.append(
+                                        [round(lap_distance), current_lap_ms, speed, round(throttle, 2), round(brake, 2)]
+                                    )
 
                         logger.debug(
                             f"Updated lap_data_store for {len(packet.lap_data) if hasattr(packet, 'lap_data') else 'N/A'} cars."
                         )
                     elif packet_id == 6:
                         lap_top_speeds = source_state["lap_top_speeds"]
+                        car_inputs = source_state["car_inputs"]
                         for i, car_telemetry in enumerate(packet.car_telemetry_data):
+                            if i < len(car_inputs):
+                                car_inputs[i] = (
+                                    getattr(car_telemetry, "speed", 0),
+                                    getattr(car_telemetry, "throttle", 0.0),
+                                    getattr(car_telemetry, "brake", 0.0),
+                                )
                             if i < len(lap_top_speeds) and hasattr(car_telemetry, "speed"):
                                 lap_top_speeds[i] = max(
                                     lap_top_speeds[i],
@@ -1257,8 +1340,19 @@ def telemetry_listener_worker(host: str, port: int, stop_event: threading.Event)
                                                     "actual_tyre_compound",
                                                     0,
                                                 ),
+                                                "visualTyreCompound": getattr(
+                                                    status_data,
+                                                    "visual_tyre_compound",
+                                                    0,
+                                                ),
                                                 "vehicleFiaFlags": getattr(
                                                     status_data, "vehicle_fia_flags", 0
+                                                ),
+                                                "tractionControl": getattr(
+                                                    status_data, "traction_control", 0
+                                                ),
+                                                "antiLockBrakes": getattr(
+                                                    status_data, "anti_lock_brakes", 0
                                                 ),
                                             }
                                         )
@@ -1270,7 +1364,7 @@ def telemetry_listener_worker(host: str, port: int, stop_event: threading.Event)
                         f"Received packet (type: {type(packet)}) but it has no 'header' attribute. Cannot determine packet_id."
                     )
 
-            except socket.timeout:
+            except (socket.timeout, UnsupportedPacketFormat):
                 continue
             except Exception as e:
                 if stop_event.is_set():
@@ -1305,7 +1399,7 @@ def telemetry_listener_worker(host: str, port: int, stop_event: threading.Event)
 def _clear_listener_state():
     global listener_thread, listener_stop_event, listener_port, listener_host, listener_error, active_drivers_count
     global latest_car_positions, participant_data_store, session_data_store, enhanced_session_data_store, lap_data_store
-    global packets_processed_count, packets_filtered_count, _last_auto_set_track_id
+    global _last_auto_set_track_id
 
     listener_thread = None
     listener_stop_event = None
@@ -1322,8 +1416,6 @@ def _clear_listener_state():
     with telemetry_sources_lock:
         telemetry_sources.clear()
 
-    packets_processed_count = 0
-    packets_filtered_count = 0
 
     _last_auto_set_track_id = None
 
@@ -1332,86 +1424,88 @@ def _clear_listener_state():
 async def start_telemetry(port: int = Query(20777, ge=1024, le=65535)):
     global listener_thread, listener_stop_event, listener_port, listener_host, listener_error, active_drivers_count
 
-    desired_host = os.getenv("F1_TELEMETRY_LISTENER_HOST", "0.0.0.0")
+    async with _listener_control_lock:
+        desired_host = os.getenv("F1_TELEMETRY_LISTENER_HOST", "0.0.0.0")
 
-    if not F1_TELEMETRY_AVAILABLE:
-        raise HTTPException(
-            status_code=500,
-            detail="F1 Telemetry library (f1_24_telemetry) is not installed or available.",
-        )
+        if not F1_TELEMETRY_AVAILABLE:
+            raise HTTPException(
+                status_code=500,
+                detail="F1 Telemetry library (f1_24_telemetry) is not installed or available.",
+            )
 
-    if listener_thread and listener_thread.is_alive():
-        raise HTTPException(
-            status_code=400,
-            detail=f"Telemetry listener is already running on host {listener_host}, port {listener_port}",
-        )
+        if listener_thread and listener_thread.is_alive():
+            raise HTTPException(
+                status_code=400,
+                detail=f"Telemetry listener is already running on host {listener_host}, port {listener_port}",
+            )
 
-    _clear_listener_state()
-    listener_port = port
-    listener_host = desired_host
-    listener_stop_event = threading.Event()
-
-    listener_thread = threading.Thread(
-        target=telemetry_listener_worker,
-        args=(listener_host, listener_port, listener_stop_event),
-        daemon=True,
-    )
-    listener_thread.start()
-
-    await asyncio.sleep(0.5)
-
-    if listener_error:
-        initial_error = listener_error
         _clear_listener_state()
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to start telemetry listener: {initial_error}",
-        )
+        listener_port = port
+        listener_host = desired_host
+        listener_stop_event = threading.Event()
 
-    if not listener_thread.is_alive():
-        _clear_listener_state()
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to start telemetry listener: Thread did not start.",
+        listener_thread = threading.Thread(
+            target=telemetry_listener_worker,
+            args=(listener_host, listener_port, listener_stop_event),
+            daemon=True,
         )
+        listener_thread.start()
 
-    local_ip = get_local_ip()
-    return StartResponse(
-        message=f"UDP telemetry listener started on host {listener_host}, port {listener_port}",
-        host=listener_host,
-        port=listener_port,
-    )
+        await asyncio.sleep(0.5)
+
+        if listener_error:
+            initial_error = listener_error
+            _clear_listener_state()
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to start telemetry listener: {initial_error}",
+            )
+
+        if not listener_thread.is_alive():
+            _clear_listener_state()
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to start telemetry listener: Thread did not start.",
+            )
+
+        local_ip = get_local_ip()
+        return StartResponse(
+            message=f"UDP telemetry listener started on host {listener_host}, port {listener_port}",
+            host=listener_host,
+            port=listener_port,
+        )
 
 
 @telemetry_router.post("/stop")
 async def stop_telemetry():
     global listener_thread, listener_stop_event
 
-    if not listener_thread or not listener_thread.is_alive() or not listener_stop_event:
-        raise HTTPException(
-            status_code=400, detail="Telemetry listener is not running."
+    async with _listener_control_lock:
+        if not listener_thread or not listener_thread.is_alive() or not listener_stop_event:
+            raise HTTPException(
+                status_code=400, detail="Telemetry listener is not running."
+            )
+
+        print("Attempting to stop telemetry listener...")
+        listener_stop_event.set()
+        await asyncio.to_thread(listener_thread.join, timeout=3.0)
+
+        if listener_thread.is_alive():
+            print("Telemetry listener thread did not stop gracefully after timeout.")
+
+        final_error = (
+            listener_error
         )
+        _clear_listener_state()
+        print("Telemetry listener stop process completed.")
 
-    print("Attempting to stop telemetry listener...")
-    listener_stop_event.set()
-    listener_thread.join(timeout=3.0)
+        response_message = "UDP telemetry listener stopped."
+        if final_error and "Error in telemetry worker" not in final_error:
+            response_message += (
+                f" Note: An error occurred during operation or shutdown: {final_error}"
+            )
 
-    if listener_thread.is_alive():
-        print("Telemetry listener thread did not stop gracefully after timeout.")
-
-    final_error = (
-        listener_error
-    )
-    _clear_listener_state()
-    print("Telemetry listener stop process completed.")
-
-    response_message = "UDP telemetry listener stopped."
-    if final_error and "Error in telemetry worker" not in final_error:
-        response_message += (
-            f" Note: An error occurred during operation or shutdown: {final_error}"
-        )
-
-    return {"message": response_message}
+        return {"message": response_message}
 
 
 @telemetry_router.get("/status", response_model=TelemetryStatus)

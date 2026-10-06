@@ -1,6 +1,8 @@
+import io
 import json
 
 import pytest
+import segno
 from fastapi.testclient import TestClient
 
 from app.api import display_data_routes
@@ -28,18 +30,6 @@ def _write_records(tmp_path, track, records):
     path = tmp_path / saved_lap_records.make_safe_file_name(track)
     path.write_text(json.dumps({"track": track, "lap_times": records}), encoding="utf-8")
     return path
-
-
-def test_get_drivers_returns_stored_drivers():
-    app_data.drivers["Max"] = Driver(name="Max", team="Red Bull", lap_times=[LapTime(time="1:12.000")])
-
-    resp = client.get("/api/drivers")
-
-    assert resp.status_code == 200
-    body = resp.json()
-    assert list(body) == ["Max"]
-    assert body["Max"]["team"] == "Red Bull"
-    assert body["Max"]["lap_times"][0]["time_seconds"] == 72.0
 
 
 def test_get_live_drivers_uses_live_data(monkeypatch):
@@ -119,13 +109,6 @@ def test_get_track_data_unknown_track_is_404():
     assert resp.json() == {"detail": "Track data not found for 'Nowhere'"}
 
 
-def test_get_available_tracks_lists_bundled_tracks():
-    tracks = client.get("/api/tracks").json()
-
-    assert tracks == track_map_loader.track_service.get_available_tracks()
-    assert "monaco" in tracks
-
-
 def test_get_track_records_for_current_track(isolated_state):
     app_data.track_name = "monza"
     records = [{"driver": "Max", "time": "1:20.000"}]
@@ -200,3 +183,62 @@ def test_delete_record_with_corrupt_file_is_500(isolated_state):
 
     assert resp.status_code == 500
     assert resp.json() == {"detail": "Could not update lap records for track 'monza'"}
+
+
+def test_export_csv_without_track_is_404():
+    assert client.get("/api/track/records/export.csv").status_code == 404
+
+
+def test_export_csv_returns_laps_and_neutralises_formulas(isolated_state):
+    app_data.track_name = "Monza"
+    _write_records(isolated_state, "Monza", [
+        {"driver": '=HYPERLINK("x")', "team": "+Ferrari", "time": "1:21.000",
+         "is_valid": True, "fastest_speed_kph": 340, "sector_1_ms": None},
+        {"driver": "Max", "team": "Red Bull", "time": "1:20.500", "is_valid": False},
+    ])
+
+    resp = client.get("/api/track/records/export.csv")
+
+    assert resp.status_code == 200
+    assert resp.headers["content-type"].startswith("text/csv")
+    assert resp.headers["content-disposition"] == 'attachment; filename="monza_laps.csv"'
+    rows = resp.text.splitlines()
+    assert rows[0] == (
+        "driver,team,time,is_valid,fastest_speed_kph,"
+        "sector_1_ms,sector_2_ms,sector_3_ms,recorded_at"
+    )
+    assert rows[1] == "\"'=HYPERLINK(\"\"x\"\")\",'+Ferrari,1:21.000,True,340,,,,"
+    assert rows[2] == "Max,Red Bull,1:20.500,False,,,,,"
+
+
+def test_export_csv_with_corrupt_file_is_500(isolated_state):
+    (isolated_state / "monza.json").write_text("{}", encoding="utf-8")
+
+    resp = client.get("/api/track/records/export.csv?track=monza")
+
+    assert resp.status_code == 500
+    assert resp.json() == {"detail": "Could not read lap records for track 'monza'"}
+
+
+@pytest.mark.parametrize(
+    "base_url, expected",
+    [
+        ("http://testserver:8000", "http://192.168.1.50:8000/mobile.html"),
+        ("http://testserver", "http://192.168.1.50/mobile.html"),
+    ],
+)
+def test_qr_svg_encodes_lan_url(monkeypatch, base_url, expected):
+    monkeypatch.setattr(display_data_routes, "get_local_ip", lambda: "192.168.1.50")
+    expected_svg = io.BytesIO()
+    segno.make(expected, error="l").save(
+        expected_svg, kind="svg", scale=2, border=0, dark="#0d1117", light="#fff",
+        xmldecl=False,
+    )
+
+    resp = TestClient(app, base_url=base_url).get("/api/qr.svg")
+
+    assert resp.status_code == 200
+    assert resp.headers["content-type"] == "image/svg+xml"
+    assert resp.headers["cache-control"] == "no-store"
+    assert resp.content == expected_svg.getvalue()
+    assert "script-src 'self'" in resp.headers["content-security-policy"]

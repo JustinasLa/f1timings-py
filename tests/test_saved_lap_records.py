@@ -193,11 +193,13 @@ def test_save_lap_record_creates_file_when_missing(tmp_path, monkeypatch):
     file_path = _track_file(tmp_path)
     assert not file_path.exists()
 
-    slr.save_lap_record(TRACK, "Lando", "McLaren", "1:11.500", True, 310.0)
+    slr.save_lap_record(TRACK, "Lando", "McLaren", "1:11.500", True, 310.0, tyre="Soft", assists=["TC"])
 
     records = slr.load_track_records(TRACK)
     assert len(records) == 1
     assert records[0]["driver"] == "Lando"
+    assert records[0]["tyre"] == "Soft"
+    assert records[0]["assists"] == ["TC"]
 
 
 def test_load_track_records_propagates_os_error_other_than_missing(
@@ -231,3 +233,49 @@ def test_save_lap_record_does_not_write_when_load_raises_os_error(
     slr.save_lap_record(TRACK, "Max", "Red Bull", "1:12.000", True, 300.0)
 
     assert file_path.read_bytes() == original_bytes
+
+
+def test_save_lap_record_stores_all_fields_and_appends(tmp_path, monkeypatch):
+    monkeypatch.setattr(slr, "TRACK_TIMES_DIR", str(tmp_path))
+    slr.save_lap_record(TRACK, "Max", "Red Bull", "1:12.000", True, 300, 1, 2, 3)
+    slr.save_lap_record(TRACK, "Lando", "McLaren", "1:13.000", False, None)
+
+    first, second = slr.load_track_records(TRACK)
+    recorded_at = first.pop("recorded_at")
+    assert first == {
+        "driver": "Max", "team": "Red Bull", "time": "1:12.000", "is_valid": True,
+        "fastest_speed_kph": 300, "sector_1_ms": 1, "sector_2_ms": 2, "sector_3_ms": 3,
+        "tyre": None, "assists": None,
+    }
+    assert recorded_at[:4].isdigit() and "T" in recorded_at
+    assert second["driver"] == "Lando"
+    assert second["is_valid"] is False
+
+
+def test_delete_lap_record_removes_only_exact_first_match(tmp_path, monkeypatch):
+    monkeypatch.setattr(slr, "TRACK_TIMES_DIR", str(tmp_path))
+    target = {"driver": "Max", "time": "1:12.000", "recorded_at": "2024-01-01T00:00:00"}
+    other_time = {**target, "time": "1:13.000"}
+    other_recorded_at = {**target, "recorded_at": "2024-01-02T00:00:00"}
+    other_driver = {**target, "driver": "Lando"}
+    duplicate = {**target, "team": "dup"}
+    slr.write_track_records(
+        TRACK, [other_time, other_recorded_at, other_driver, target, duplicate]
+    )
+
+    assert slr.delete_lap_record(TRACK, "Max", "1:12.000", "2024-01-01T00:00:00") is True
+
+    assert slr.load_track_records(TRACK) == [
+        other_time, other_recorded_at, other_driver, duplicate
+    ]
+
+
+def test_delete_lap_record_without_match_leaves_file_untouched(tmp_path, monkeypatch):
+    monkeypatch.setattr(slr, "TRACK_TIMES_DIR", str(tmp_path))
+    slr.write_track_records(
+        TRACK, [{"driver": "Max", "time": "1:12.000", "recorded_at": "a"}]
+    )
+    original_bytes = _track_file(tmp_path).read_bytes()
+
+    assert slr.delete_lap_record(TRACK, "Max", "1:12.000", "b") is False
+    assert _track_file(tmp_path).read_bytes() == original_bytes

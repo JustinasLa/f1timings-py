@@ -1,8 +1,8 @@
 import asyncio
+import csv
 import io
 import logging
-import socket
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 import segno
 from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel
@@ -11,13 +11,10 @@ from app.models.data_models import (
     DriverResponse,
     TrackNameResponse,
     TrackData,
-    driver_to_response,
 )
 from app.services.lap_time_store import (
     get_track,
     set_track,
-    app_data,
-    state_lock,
 )
 
 
@@ -33,28 +30,17 @@ class LapDeleteInput(BaseModel):
     recorded_at: Optional[str] = None
     track: Optional[str] = None
 from app.services.track_map_loader import track_service
-from app.services.saved_lap_records import load_track_records, delete_lap_record
-from app.api.udp_telemetry_routes import get_live_driver_data_for_api
+from app.services.saved_lap_records import (
+    load_track_records,
+    load_lap_traces,
+    delete_lap_record,
+    make_safe_file_name,
+)
+from app.api.udp_telemetry_routes import get_live_driver_data_for_api, get_local_ip
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-
-
-@router.get("/api/drivers", response_model=Dict[str, DriverResponse], tags=["Drivers"])
-async def get_drivers_endpoint():
-
-    async with state_lock:
-        drivers_copy = {
-            name: driver.model_copy(deep=True)
-            for name, driver in app_data.drivers.items()
-        }
-
-    drivers_response = {
-        name: driver_to_response(driver) for name, driver in drivers_copy.items()
-    }
-
-    return drivers_response
 
 
 @router.get(
@@ -108,11 +94,6 @@ async def get_track_data_endpoint(track: str = None):
     return track_data
 
 
-@router.get("/api/tracks", response_model=List[str], tags=["Track"])
-async def get_available_tracks_endpoint():
-    return track_service.get_available_tracks()
-
-
 @router.get("/api/track/records", tags=["Track"])
 async def get_track_records_endpoint(track: str = None):
     track_name = track if track else await get_track()
@@ -126,6 +107,94 @@ async def get_track_records_endpoint(track: str = None):
         lap_times = []
 
     return {"track": track_name, "lap_times": lap_times}
+
+
+@router.get("/api/track/trace", tags=["Track"])
+async def get_lap_trace_endpoint(driver: str, track: str = None):
+    track_name = track if track else await get_track()
+    if not track_name:
+        raise HTTPException(status_code=404, detail="No track name set or specified")
+
+    traces = await asyncio.to_thread(load_lap_traces, track_name)
+    trace = traces.get(driver)
+    if not isinstance(trace, dict):
+        raise HTTPException(status_code=404, detail=f"No lap trace for '{driver}'")
+
+    return {
+        "track": track_name,
+        "driver": driver,
+        "time": trace.get("time"),
+        "samples": trace.get("samples", []),
+    }
+
+
+@router.get("/api/qr.svg", tags=["Display"])
+async def get_dashboard_qr_endpoint(request: Request):
+    # Phones can't resolve "localhost", so point them at the LAN address.
+    netloc = get_local_ip()
+    if request.url.port:
+        netloc += f":{request.url.port}"
+    buffer = io.BytesIO()
+    # 2px modules render crisp; the white tile in the page is the quiet zone.
+    segno.make(f"{request.url.scheme}://{netloc}/mobile.html", error="l").save(
+        buffer, kind="svg", scale=2, border=0, dark="#0d1117", light="#fff",
+        xmldecl=False,
+    )
+    return Response(
+        content=buffer.getvalue(),
+        media_type="image/svg+xml",
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+CSV_EXPORT_COLUMNS = [
+    "driver",
+    "team",
+    "time",
+    "is_valid",
+    "fastest_speed_kph",
+    "sector_1_ms",
+    "sector_2_ms",
+    "sector_3_ms",
+    "recorded_at",
+]
+
+
+def csv_safe_cell(value):
+    # Spreadsheet apps execute cells starting with these as formulas.
+    text = "" if value is None else str(value)
+    if text and text[0] in "=+-@\t\r":
+        return "'" + text
+    return text
+
+
+@router.get("/api/track/records/export.csv", tags=["Track"])
+async def export_track_records_endpoint(track: str = None):
+    track_name = track if track else await get_track()
+    if not track_name:
+        raise HTTPException(status_code=404, detail="No track name set or specified")
+
+    try:
+        lap_times = await asyncio.to_thread(load_track_records, track_name)
+    except (OSError, ValueError) as error:
+        logger.error(f"Could not read lap times for '{track_name}': {error}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Could not read lap records for track '{track_name}'",
+        )
+
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(CSV_EXPORT_COLUMNS)
+    for record in lap_times:
+        writer.writerow([csv_safe_cell(record.get(column)) for column in CSV_EXPORT_COLUMNS])
+
+    file_name = make_safe_file_name(track_name).removesuffix(".json") + "_laps.csv"
+    return Response(
+        content=buffer.getvalue(),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{file_name}"'},
+    )
 
 
 @router.post("/api/track/records/delete", tags=["Track"])
@@ -152,28 +221,3 @@ async def delete_track_record_endpoint(delete_input: LapDeleteInput):
         raise HTTPException(status_code=404, detail="No matching lap to delete")
 
     return {"deleted": True, "track": track_name}
-
-
-def _lan_ip() -> str:
-    # UDP connect sends nothing; it just picks the outbound interface.
-    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-        try:
-            sock.connect(("10.255.255.255", 1))
-            return sock.getsockname()[0]
-        except OSError:
-            return "127.0.0.1"
-
-
-@router.get("/api/qr.svg", tags=["Mobile"])
-async def mobile_qr_endpoint(request: Request):
-    host = request.url.hostname or ""
-    if host in ("localhost", "127.0.0.1", "::1"):
-        host = _lan_ip()
-    if ":" in host:
-        host = f"[{host}]"
-    port = request.url.port
-    netloc = host if port is None else f"{host}:{port}"
-    url = f"{request.url.scheme}://{netloc}/mobile.html"
-    svg = io.BytesIO()
-    segno.make(url, error="l").save(svg, kind="svg", scale=2, border=0, dark="#0d1117", light="#fff")
-    return Response(svg.getvalue(), media_type="image/svg+xml", headers={"Cache-Control": "no-store"})

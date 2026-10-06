@@ -5,6 +5,8 @@ import tempfile
 import threading
 from datetime import datetime
 
+from app.models.data_models import LapTime
+
 logger = logging.getLogger(__name__)
 
 TRACK_TIMES_DIR = "track_times"
@@ -51,10 +53,10 @@ def load_track_records(track_name):
     raise ValueError(f"track {track_name!r} file has no 'lap_times' list")
 
 
-def write_json_atomic(file_path, file_content):
+def write_json_atomic(file_path, file_content, indent=2):
     tmp_path = None
     try:
-        json_text = json.dumps(file_content, indent=2)
+        json_text = json.dumps(file_content, indent=indent)
 
         tmp_file = tempfile.NamedTemporaryFile(
             mode="w",
@@ -101,6 +103,43 @@ def write_track_records(track_name, lap_times):
         return False
 
 
+def get_trace_file_path(track_name):
+    return get_track_file_path(track_name).removesuffix(".json") + ".traces.json"
+
+
+def load_lap_traces(track_name):
+    file_path = get_trace_file_path(track_name)
+    try:
+        with _records_lock, open(file_path, "r", encoding="utf-8") as json_file:
+            data = json.load(json_file)
+    except FileNotFoundError:
+        return {}
+    except (OSError, ValueError) as error:
+        logger.warning(f"Ignoring unreadable lap traces for '{track_name}': {error}")
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def best_valid_seconds(lap_times, driver_name):
+    return min(
+        (
+            LapTime(time=str(record.get("time", ""))).time_seconds
+            for record in lap_times
+            if record.get("driver") == driver_name and record.get("is_valid") is not False
+        ),
+        default=float("inf"),
+    )
+
+
+def save_lap_trace(track_name, driver_name, time, trace):
+    traces = load_lap_traces(track_name)
+    traces[driver_name] = {"time": time, "samples": trace}
+    try:
+        write_json_atomic(get_trace_file_path(track_name), traces, indent=None)
+    except (OSError, TypeError, ValueError) as error:
+        logger.warning(f"Could not write lap trace for '{driver_name}' on '{track_name}': {error}")
+
+
 def save_lap_record(
     track_name,
     driver_name,
@@ -111,6 +150,9 @@ def save_lap_record(
     sector_1_ms=None,
     sector_2_ms=None,
     sector_3_ms=None,
+    tyre=None,
+    assists=None,
+    trace=None,
 ):
     new_record = {
         "driver": driver_name,
@@ -121,6 +163,8 @@ def save_lap_record(
         "sector_1_ms": sector_1_ms,
         "sector_2_ms": sector_2_ms,
         "sector_3_ms": sector_3_ms,
+        "tyre": tyre,
+        "assists": assists,
         "recorded_at": datetime.now().isoformat(timespec="seconds"),
     }
 
@@ -134,12 +178,16 @@ def save_lap_record(
             )
             return False
 
+        previous_best = best_valid_seconds(lap_times, driver_name)
         lap_times.append(new_record)
         written = write_track_records(track_name, lap_times)
         if written:
             logger.debug(
                 f"Saved lap time for '{driver_name}' on track '{track_name}'."
             )
+            # Only each driver's best valid lap keeps a trace, in a side file.
+            if trace and is_valid and LapTime(time=time).time_seconds < previous_best:
+                save_lap_trace(track_name, driver_name, time, trace)
         return written
 
 

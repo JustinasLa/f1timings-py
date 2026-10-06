@@ -13,6 +13,8 @@ class LapTime(BaseModel):
     sector_1_ms: Optional[int] = None
     sector_2_ms: Optional[int] = None
     sector_3_ms: Optional[int] = None
+    tyre: Optional[str] = None
+    assists: Optional[List[str]] = None
 
     @computed_field
     @property
@@ -84,6 +86,10 @@ class LapTimeInput(BaseModel):
     sector_1_ms: Optional[int] = None
     sector_2_ms: Optional[int] = None
     sector_3_ms: Optional[int] = None
+    tyre: Optional[str] = None
+    assists: Optional[List[str]] = None
+    # [lap_distance_m, elapsed_ms, speed_kph, throttle, brake] every ~25 m.
+    trace: Optional[List[List[float]]] = None
 
     @field_validator("time")
     def validate_time_format(cls, v):
@@ -156,11 +162,3 @@ class DriverResponse(BaseModel):
 class TrackNameResponse(BaseModel):
 
     name: str = Field(..., description="Name of the current track")
-
-
-def driver_to_response(driver: Driver) -> DriverResponse:
-    return DriverResponse(
-        name=driver.name,
-        team=driver.team,
-        lap_times=list(driver.lap_times),
-    )

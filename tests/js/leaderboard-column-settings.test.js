@@ -20,15 +20,16 @@ function switches(env) {
 test('initializeColumnSettings applies defaults when nothing is saved', () => {
   const env = createDashboard();
   env.window.initializeColumnSettings();
-  assert.deepEqual(hiddenColumns(env), ['hide-col-potential']);
+  assert.deepEqual(hiddenColumns(env), ['hide-col-potential', 'hide-col-consistency']);
   assert.deepEqual(switches(env), {
-    pos: true, topspeed: true, bestlap: true, potential: false, sectors: true, gap: true, laps: true
+    pos: true, topspeed: true, bestlap: true, potential: false, sectors: true, gap: true, interval: true,
+    consistency: false, laps: true
   });
 });
 
 test('saved settings are loaded, ignoring non-boolean values', () => {
   const env = createDashboard();
-  env.window.localStorage.setItem(KEY, JSON.stringify({ pos: false, potential: true, gap: 'no', bogus: false }));
+  env.window.localStorage.setItem(KEY, JSON.stringify({ pos: false, potential: true, consistency: true, gap: 'no', bogus: false }));
   env.window.initializeColumnSettings();
   assert.deepEqual(hiddenColumns(env), ['hide-col-pos']);
   assert.equal(switches(env).potential, true);
@@ -63,12 +64,12 @@ test('toggling a switch hides the column, saves and refits the layout', () => {
   const gap = env.document.querySelector('input[data-column="gap"]');
   gap.click();
   assert.equal(gap.checked, false);
-  assert.deepEqual(hiddenColumns(env), ['hide-col-potential', 'hide-col-gap']);
+  assert.deepEqual(hiddenColumns(env), ['hide-col-potential', 'hide-col-consistency', 'hide-col-gap']);
   assert.equal(JSON.parse(w.localStorage.getItem(KEY)).gap, false);
   assert.equal(refits, 1);
 
   gap.click();
-  assert.deepEqual(hiddenColumns(env), ['hide-col-potential']);
+  assert.deepEqual(hiddenColumns(env), ['hide-col-potential', 'hide-col-consistency']);
   assert.equal(refits, 2);
 });
 

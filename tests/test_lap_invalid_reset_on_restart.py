@@ -60,6 +60,7 @@ def test_restart_after_invalidation_saves_next_clean_lap_valid(worker_env, monke
     assert laps[0]["is_valid"] is True
     assert laps[0]["sector_1_ms"] == 24000
     assert laps[0]["sector_2_ms"] == 25000
+    assert laps[0]["sector_3_ms"] == 26000
     assert app_data.drivers["Hamilton"].lap_times[0].fastest_speed_kph == 300
 
 
@@ -111,3 +112,24 @@ def test_invalidated_lap_without_restart_still_saved_invalid(worker_env, monkeyp
     assert laps[0]["is_valid"] is False
     assert laps[0]["sector_1_ms"] == 25000
     assert laps[0]["sector_2_ms"] == 25000
+
+
+def test_clean_lap_after_completed_invalid_lap_saved_valid(worker_env, monkeypatch):
+    saves, ws = worker_env
+    app_data.track_name = "monza"
+
+    _run_worker(
+        monkeypatch,
+        [
+            _participants_packet("Hamilton"),
+            _lap(0, 1000),
+            _lap(0, 30000, invalid=1, s1=25000),
+            _lap(76000, 100),
+            _lap(76000, 30000, s1=25000),
+            _lap(76000, 50000, s1=25000, s2=25000),
+            _lap(77000, 100),
+        ],
+    )
+
+    laps = _saved_laps(ws)
+    assert [lap["is_valid"] for lap in laps] == [False, True]

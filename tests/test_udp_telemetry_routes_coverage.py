@@ -114,15 +114,16 @@ def test_submit_logs_warning_when_future_cancelled(monkeypatch, caplog):
 
 
 def test_parse_packet_with_sender_unpacks_real_packet():
-    from f1_24_telemetry.packets import HEADER_FIELD_TO_PACKET_TYPE
-
-    cls = HEADER_FIELD_TO_PACKET_TYPE[(2024, 1, 1)]
+    cls = routes.HEADER_FIELD_TO_PACKET_TYPE[(2024, 1, 1)]
     packet = cls()
     packet.header.packet_format = 2024
     packet.header.packet_version = 1
     packet.header.packet_id = 1
     packet.track_id = 11
     raw = bytes(packet)
+    # F1 24 spec: 753 bytes, 64 forecast samples, timeOfDay at offset 696
+    assert len(raw) == 753
+    raw = raw[:696] + (720).to_bytes(4, "little") + raw[700:]
 
     calls = []
 
@@ -138,6 +139,7 @@ def test_parse_packet_with_sender_unpacks_real_packet():
     assert isinstance(parsed, cls)
     assert parsed.header.packet_id == 1
     assert parsed.track_id == 11
+    assert parsed.time_of_day == 720
 
 
 class _Inner(ctypes.Structure):
@@ -332,8 +334,13 @@ def start_env(monkeypatch):
 
     async def fake_sleep(seconds):
         sleeps.append(seconds)
+        await asyncio.sleep(0)  # yield so concurrent requests can interleave
 
-    monkeypatch.setattr(routes, "asyncio", SimpleNamespace(sleep=fake_sleep))
+    monkeypatch.setattr(
+        routes,
+        "asyncio",
+        SimpleNamespace(sleep=fake_sleep, to_thread=asyncio.to_thread),
+    )
     monkeypatch.setattr(routes, "F1_TELEMETRY_AVAILABLE", True)
     local_ip_calls = []
 
@@ -383,6 +390,24 @@ def test_start_and_stop_listener(start_env, monkeypatch):
     assert routes.listener_thread is None
     assert routes.listener_stop_event is None
     assert routes.listener_port is None
+
+
+def test_concurrent_start_and_stop_are_serialized(start_env):
+    thread = start_env.install(FakeThread())
+
+    async def start_and_stop():
+        # Without serialization, stop would clear state during start's sleep
+        # and start would crash on listener_thread being None.
+        return await asyncio.gather(
+            routes.start_telemetry(port=20777), routes.stop_telemetry()
+        )
+
+    started, stopped = asyncio.run(start_and_stop())
+
+    assert started.port == 20777
+    assert stopped == {"message": "UDP telemetry listener stopped."}
+    assert thread.joins == [3.0]
+    assert routes.listener_thread is None
 
 
 def test_start_defaults_host_and_reports_worker_error(start_env, monkeypatch):
@@ -452,6 +477,47 @@ def test_stop_hides_transient_worker_errors(monkeypatch):
     result = asyncio.run(routes.stop_telemetry())
 
     assert result == {"message": "UDP telemetry listener stopped."}
+
+
+def test_parse_packet_rejects_wrong_format_and_warns_once(monkeypatch, caplog):
+    monkeypatch.setattr(routes, "_warned_packet_formats", set())
+    monkeypatch.setattr(routes, "listener_error", None)
+    header = routes.PacketHeader()
+    packets = []
+
+    class FakeSocket:
+        def recvfrom(self, size):
+            return packets.pop(0), ("10.0.0.9", 5000)
+
+    listener = SimpleNamespace(socket=FakeSocket())
+    for fmt in (2023, 2023, 2022):
+        header.packet_format = fmt
+        packets.append(bytes(header))
+        with caplog.at_level(logging.WARNING, logger=routes.__name__):
+            with pytest.raises(routes.UnsupportedPacketFormat):
+                routes._parse_packet_with_sender(listener)
+
+    warnings = [r.getMessage() for r in caplog.records]
+    assert len(warnings) == 2
+    assert "Received UDP format 2023; set Telemetry Settings > UDP Format to 2024" in warnings[0]
+    assert routes.listener_error == "UDP format 2022, need 2024"
+
+    good = routes.HEADER_FIELD_TO_PACKET_TYPE[(2024, 1, 1)]()
+    good.header.packet_format, good.header.packet_version, good.header.packet_id = 2024, 1, 1
+    packets.append(bytes(good))
+    routes._parse_packet_with_sender(listener)
+    assert routes.listener_error is None
+
+
+def test_parse_packet_keeps_unrelated_listener_error(monkeypatch):
+    monkeypatch.setattr(routes, "listener_error", "Error in telemetry worker: boom")
+    good = routes.HEADER_FIELD_TO_PACKET_TYPE[(2024, 1, 1)]()
+    good.header.packet_format, good.header.packet_version, good.header.packet_id = 2024, 1, 1
+    listener = SimpleNamespace(
+        socket=SimpleNamespace(recvfrom=lambda size: (bytes(good), ("10.0.0.9", 5000)))
+    )
+    routes._parse_packet_with_sender(listener)
+    assert routes.listener_error == "Error in telemetry worker: boom"
 
 
 # --------------------------------------------------------------- status

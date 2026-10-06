@@ -155,6 +155,14 @@ def test_worker_continues_after_packet_error(monkeypatch):
     assert state()["participants"][0]["name"] == "Hamilton"
 
 
+def test_worker_skips_wrong_format_packet_without_worker_error(monkeypatch, capsys):
+    run_worker(monkeypatch, [routes.UnsupportedPacketFormat(2023), participants("Hamilton")])
+
+    assert routes.listener_error is None
+    assert "ERROR IN TELEMETRY WORKER" not in capsys.readouterr().out
+    assert state()["participants"][0]["name"] == "Hamilton"
+
+
 def test_worker_exits_quietly_on_error_during_stop(monkeypatch, capsys):
     def stop_then_fail(stop_event):
         stop_event.set()
@@ -177,28 +185,23 @@ def test_worker_skips_null_and_headerless_packets(monkeypatch, caplog):
     messages = [r.getMessage() for r in caplog.records]
     assert any("null/falsey packet" in m for m in messages)
     assert any("no 'header' attribute" in m for m in messages)
-    assert routes.packets_processed_count == 0
-    assert routes.packets_filtered_count == 0
     assert SENDER in routes.telemetry_sources
 
 
-def test_worker_filters_non_essential_packets(monkeypatch):
-    run_worker(
-        monkeypatch,
-        [SimpleNamespace(header=SimpleNamespace(packet_id=3)), lap(), lap()],
-    )
+def test_worker_filters_non_essential_packets(monkeypatch, caplog):
+    with caplog.at_level(logging.DEBUG, logger=routes.logger.name):
+        run_worker(monkeypatch, [SimpleNamespace(header=SimpleNamespace(packet_id=3))])
 
-    assert routes.packets_filtered_count == 1
-    assert routes.packets_processed_count == 2
+    assert "Packet ID 3 filtered out" in caplog.text
 
 
-def test_unhandled_packet_counted_but_ignored_when_filtering_disabled(monkeypatch):
+def test_unhandled_packet_ignored_when_filtering_disabled(monkeypatch, caplog):
     monkeypatch.setattr(routes, "ENABLE_PACKET_FILTERING", False)
 
-    run_worker(monkeypatch, [SimpleNamespace(header=SimpleNamespace(packet_id=3))])
+    with caplog.at_level(logging.DEBUG, logger=routes.logger.name):
+        run_worker(monkeypatch, [SimpleNamespace(header=SimpleNamespace(packet_id=3))])
 
-    assert routes.packets_filtered_count == 0
-    assert routes.packets_processed_count == 1
+    assert "filtered out" not in caplog.text
     assert routes.listener_error is None
     assert state()["participants"] == [{}] * 22
 
@@ -439,6 +442,67 @@ def test_lap_saved_under_current_name_when_owner_unknown(monkeypatch, saved_laps
     assert track is None
 
 
+def test_lap_saved_with_visual_tyre_compound(monkeypatch, saved_laps):
+    status = SimpleNamespace(
+        header=SimpleNamespace(packet_id=7),
+        car_status_data=[SimpleNamespace(visual_tyre_compound=16)],
+    )
+    run_worker(monkeypatch, [participants("Hamilton"), lap(0), status, lap(75000)])
+
+    assert saved_laps[0][0].tyre == "Soft"
+
+
+def test_lap_keeps_tyre_from_lap_start_when_changed_mid_lap(monkeypatch, saved_laps):
+    def status(compound):
+        return SimpleNamespace(
+            header=SimpleNamespace(packet_id=7),
+            car_status_data=[SimpleNamespace(visual_tyre_compound=compound)],
+        )
+
+    run_worker(
+        monkeypatch,
+        [participants("Hamilton"), status(16), lap(0), lap(s1=25000), status(17), lap(75000)],
+    )
+
+    assert saved_laps[0][0].tyre == "Soft"
+
+
+def test_lap_saved_without_tyre_when_compound_unknown(monkeypatch, saved_laps):
+    run_worker(monkeypatch, [participants("Hamilton"), lap(0), lap(75000)])
+
+    assert saved_laps[0][0].tyre is None
+    assert saved_laps[0][0].assists is None
+
+
+def _assist_packets(tc, abs_, racing_line, player_car_index):
+    session = SimpleNamespace(
+        header=SimpleNamespace(packet_id=1),
+        track_id=0, network_game=0, game_paused=0, session_type=13,
+        session_link_identifier=0, session_time_left=0, session_duration=0,
+        pit_speed_limit=80, weather=0, track_temperature=30, air_temperature=25,
+        time_of_day=0, dynamic_racing_line=racing_line,
+    )
+    status = SimpleNamespace(
+        header=SimpleNamespace(packet_id=7),
+        car_status_data=[SimpleNamespace(traction_control=tc, anti_lock_brakes=abs_)],
+    )
+    finished = lap(75000)
+    finished.header.player_car_index = player_car_index
+    return [session, participants("Hamilton"), lap(0), status, finished]
+
+
+def test_lap_saved_with_player_assists(monkeypatch, saved_laps):
+    run_worker(monkeypatch, _assist_packets(tc=2, abs_=0, racing_line=1, player_car_index=0))
+
+    assert saved_laps[0][0].assists == ["TC", "RL"]
+
+
+def test_racing_line_ignored_for_non_player_car(monkeypatch, saved_laps):
+    run_worker(monkeypatch, _assist_packets(tc=0, abs_=1, racing_line=2, player_car_index=5))
+
+    assert saved_laps[0][0].assists == ["ABS"]
+
+
 def test_personal_best_ghost_lap_is_not_saved(monkeypatch, saved_laps):
     run_worker(monkeypatch, [participants("Personal Best"), lap(0), lap(75000)])
 
@@ -536,7 +600,10 @@ def test_car_status_updates_known_participants_only(monkeypatch):
         tyres_wear_fl=3.0,
         tyres_wear_fr=4.0,
         actual_tyre_compound=16,
+        visual_tyre_compound=17,
         vehicle_fia_flags=3,
+        traction_control=1,
+        anti_lock_brakes=1,
     )
     packet = SimpleNamespace(
         header=SimpleNamespace(packet_id=7),
@@ -555,7 +622,10 @@ def test_car_status_updates_known_participants_only(monkeypatch):
     assert first["drsAllowed"] == 1
     assert first["tyresWear"] == [1.0, 2.0, 3.0, 4.0]
     assert first["tyreCompound"] == 16
+    assert first["visualTyreCompound"] == 17
     assert first["vehicleFiaFlags"] == 3
+    assert first["tractionControl"] == 1
+    assert first["antiLockBrakes"] == 1
     assert state()["participants"][1] == {}
     assert len(state()["participants"]) == 22
     assert routes.listener_error is None

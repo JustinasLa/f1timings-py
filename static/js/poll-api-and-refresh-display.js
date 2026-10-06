@@ -53,7 +53,8 @@ async function refreshDisplayData() {
     const url = "/api/track/records?track=" + encodeURIComponent(currentTrack);
     const response = await fetchJsonWithTimeout(url, 1500);
     const records = Array.isArray(response.lap_times) ? response.lap_times : [];
-    const drivers = buildDriversFromRecords(records);
+    updateEventDateOptions(records);
+    const drivers = buildDriversFromRecords(filterRecordsByEventDate(records));
     updateLeaderboard(drivers);
     updateFastestLapPill(drivers);
     updatePoleLapCard(records);

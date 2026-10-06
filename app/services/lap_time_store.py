@@ -56,6 +56,8 @@ async def add_or_update_lap_time(
                 sector_1_ms=lap_input.sector_1_ms,
                 sector_2_ms=lap_input.sector_2_ms,
                 sector_3_ms=lap_input.sector_3_ms,
+                tyre=lap_input.tyre,
+                assists=lap_input.assists,
             )
         except ValueError as e:
             logger.error(
@@ -127,6 +129,9 @@ async def add_or_update_lap_time(
             new_lap.sector_1_ms,
             new_lap.sector_2_ms,
             new_lap.sector_3_ms,
+            new_lap.tyre,
+            new_lap.assists,
+            lap_input.trace,
         )
     else:
         logger.warning(

@@ -57,6 +57,10 @@
         <div class="section-title">
           <span>Stored Times</span>
           <div class="column-settings">
+            <select class="event-date-filter" id="eventDateFilter" aria-label="Show laps from">
+              <option value="">All time</option>
+            </select>
+            <a class="export-csv-link" href="/api/track/records/export.csv" download title="Download this track's laps as CSV">CSV</a>
             <button class="column-settings-toggle" id="columnSettingsToggle" type="button" aria-label="Column settings" aria-expanded="false">&#9881;</button>
             <div class="column-settings-menu" id="columnSettingsMenu">
               <div class="column-settings-head">Show columns</div>
@@ -103,6 +107,20 @@
                 </span>
               </label>
               <label class="column-toggle">
+                <span class="column-toggle-label">Interval</span>
+                <span class="column-switch">
+                  <input type="checkbox" data-column="interval" checked>
+                  <span class="column-switch-track"></span>
+                </span>
+              </label>
+              <label class="column-toggle">
+                <span class="column-toggle-label">Consistency</span>
+                <span class="column-switch">
+                  <input type="checkbox" data-column="consistency">
+                  <span class="column-switch-track"></span>
+                </span>
+              </label>
+              <label class="column-toggle">
                 <span class="column-toggle-label">Laps</span>
                 <span class="column-switch">
                   <input type="checkbox" data-column="laps" checked>
@@ -122,6 +140,8 @@
               <th class="col-potential">Potential</th>
               <th class="col-sectors">Sectors</th>
               <th class="col-gap">Gap</th>
+              <th class="col-interval">Int</th>
+              <th class="col-consistency" title="Standard deviation of valid lap times (needs 3+ laps)">Consistency</th>
               <th class="col-laps">Laps</th>
             </tr>
           </thead>
@@ -155,7 +175,7 @@
             <div class="pole-lap-time" id="poleLapTime">--:--.---</div>
             <div class="pole-lap-meta" id="poleLapMeta"></div>
           </div>
-          <div id="lap-toast-container"></div>
+          <div id="lap-toast-container" role="status" aria-live="polite"></div>
           <div class="map-conditions" id="mapConditions" style="display:none">
             <div class="condition-marker">
               <div class="condition-label">Track</div>
@@ -169,11 +189,12 @@
         </div>
         <canvas id="trackCanvas" width="1200" height="800" style="display:none"></canvas>
         <div class="track-placeholder" id="trackPlaceholder">
-          <div class="track-placeholder-icon">&#127937;</div>
+          <div class="track-placeholder-icon" aria-hidden="true">&#127937;</div>
           <div>Track visualization</div>
           <div style="font-size:11px;opacity:0.6;margin-top:4px">Select a track from the map header</div>
         </div>
       </div>
+      <canvas id="traceChart" class="trace-chart" width="1200" height="240" hidden aria-label="Throttle and brake over the lap vs the leader"></canvas>
       <div class="driver-alias-panel">
         <div class="driver-alias-title">Player Names</div>
         <div class="driver-alias-list" id="driverAliasList">
@@ -184,7 +205,7 @@
 
   </div>
 
-  <div id="toast-container"></div>
+  <div id="toast-container" role="status" aria-live="polite"></div>
 
   <script src="/js/dashboard-settings.js"></script>
   <script src="/js/shared-dashboard-state.js"></script>
@@ -192,7 +213,9 @@
   <script src="/js/stored-lap-leaderboard.js"></script>
   <script src="/js/leaderboard-column-settings.js"></script>
   <script src="/js/layout-divider.js"></script>
+  <script src="/js/kiosk-mode.js"></script>
   <script src="/js/track-map-canvas.js"></script>
+  <script src="/js/lap-trace-chart.js"></script>
   <script src="/js/track-conditions-markers.js"></script>
   <script src="/js/player-name-aliases.js"></script>
   <script src="/js/udp-listener-controls.js"></script>
