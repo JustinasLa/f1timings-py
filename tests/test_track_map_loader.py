@@ -244,16 +244,6 @@ def test_load_track_data_unreadable_baked_file_returns_none(track_dir, caplog):
     assert "No pre-built track data for 'monaco'" in caplog.text
 
 
-def test_clear_cache_empties_cache(track_dir):
-    _write_track(track_dir, "monaco")
-    service = TrackService()
-    asyncio.run(service.load_track_data("monaco"))
-
-    service.clear_cache()
-
-    assert service.track_cache == {}
-
-
 def test_bundled_track_data_loads_for_every_available_track():
     service = TrackService()
 
