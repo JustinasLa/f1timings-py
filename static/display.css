@@ -376,6 +376,7 @@ body.layout-resizing {
 .timing-table.hide-col-sectors .col-sectors,
 .timing-table.hide-col-gap .col-gap,
 .timing-table.hide-col-interval .col-interval,
+.timing-table.hide-col-consistency .col-consistency,
 .timing-table.hide-col-laps .col-laps {
   display: none;
 }
@@ -425,6 +426,15 @@ body.layout-resizing {
   color: var(--text-muted);
   border-color: rgba(255, 255, 255, 0.08);
 }
+.live-delta {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+.live-delta.delta-ahead { color: var(--green); }
+.live-delta.delta-behind { color: var(--red); }
 
 .timing-table {
   width: 100%;
@@ -1074,6 +1084,17 @@ body.layout-resizing {
 .tyre-tag.tyre-hard { color: #f0f0f0; }
 .tyre-tag.tyre-inter { color: #3fb950; }
 .tyre-tag.tyre-wet { color: #2f81f7; }
+.assists-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 4px;
+  border: 1px solid #d29922;
+  border-radius: 3px;
+  font-size: 9px;
+  font-weight: 700;
+  vertical-align: middle;
+  color: #d29922;
+}
 
 /* The column switches hide their real checkbox, so show keyboard focus on the track. */
 .column-switch input:focus-visible + .column-switch-track {
