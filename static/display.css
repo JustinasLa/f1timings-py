@@ -375,6 +375,7 @@ body.layout-resizing {
 .timing-table.hide-col-potential .col-potential,
 .timing-table.hide-col-sectors .col-sectors,
 .timing-table.hide-col-gap .col-gap,
+.timing-table.hide-col-interval .col-interval,
 .timing-table.hide-col-laps .col-laps {
   display: none;
 }
