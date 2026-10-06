@@ -425,6 +425,15 @@ body.layout-resizing {
   color: var(--text-muted);
   border-color: rgba(255, 255, 255, 0.08);
 }
+.live-delta {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+.live-delta.delta-ahead { color: var(--green); }
+.live-delta.delta-behind { color: var(--red); }
 
 .timing-table {
   width: 100%;
