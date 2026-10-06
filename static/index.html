@@ -23,6 +23,19 @@
       <h1 id="sessionTitle">—</h1>
       <div class="session-location" id="sessionLocation">Waiting for session data</div>
     </div>
+    <button class="qr-panel" type="button" popovertarget="qrPopover" aria-label="Show phone view QR code">
+      <span class="qr-tile"><img src="/api/qr.svg" alt="" /></span>
+      <span class="qr-text">
+        <span class="qr-title">Live timings</span>
+        <span class="qr-sub">Scan with your phone</span>
+      </span>
+    </button>
+    <div class="qr-popover" id="qrPopover" popover>
+      <span class="qr-tile"><img src="/api/qr.svg" alt="QR code for the phone view" /></span>
+      <div class="qr-popover-title">Live timings on your phone</div>
+      <div class="qr-popover-sub">Point your camera here &middot; same Wi-Fi as this screen</div>
+      <a class="qr-popover-link" href="/mobile.html" target="_blank">Open phone view</a>
+    </div>
     <div class="udp-panel" id="udpPanel">
       <div class="udp-status-line">
         <span class="udp-status-dot" id="udpStatusDot"></span>

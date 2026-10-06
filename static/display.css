@@ -89,6 +89,92 @@ body {
   color: var(--text-muted);
   margin-top: 2px;
 }
+.qr-panel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 14px 4px 4px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.qr-panel:hover,
+.qr-panel:focus-visible {
+  border-color: var(--blue);
+  background: rgba(88, 166, 255, 0.06);
+  outline: none;
+}
+.qr-tile {
+  display: block;
+  padding: 8px;
+  border-radius: 4px;
+  background: #fff;
+  line-height: 0;
+}
+.qr-tile img {
+  display: block;
+}
+.qr-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.qr-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+.qr-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.qr-popover {
+  margin: auto;
+  padding: 28px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg2);
+  color: var(--text);
+  text-align: center;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+}
+.qr-popover::backdrop {
+  background: rgba(1, 4, 9, 0.7);
+}
+.qr-popover .qr-tile {
+  display: inline-block;
+  padding: 16px;
+  border-radius: 10px;
+}
+.qr-popover .qr-tile img {
+  width: 290px;
+  height: 290px;
+}
+.qr-popover-title {
+  margin-top: 18px;
+  font-size: 18px;
+  font-weight: 600;
+}
+.qr-popover-sub {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.qr-popover-link {
+  display: inline-block;
+  margin-top: 14px;
+  font-size: 12px;
+  color: var(--blue);
+  text-decoration: none;
+}
+.qr-popover-link:hover {
+  text-decoration: underline;
+}
 .udp-panel {
   min-width: 235px;
   padding: 7px 9px;
@@ -1034,4 +1120,22 @@ body.layout-resizing {
   font-size: 12px;
   color: var(--text-muted);
   font-style: italic;
+}
+
+body.mobile-view {
+  height: auto;
+  overflow: auto;
+}
+.mobile-view .session-header {
+  padding: 10px 12px;
+}
+.mobile-view .timing-table thead {
+  top: 0;
+}
+.mobile-view .timing-table th,
+.mobile-view .timing-table td {
+  padding: 8px 6px;
+}
+.mobile-view .lap-delete-btn {
+  display: none;
 }

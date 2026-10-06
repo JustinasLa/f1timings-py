@@ -1,7 +1,10 @@
 import asyncio
+import io
 import logging
+import socket
 from typing import Dict, List, Optional
-from fastapi import APIRouter, HTTPException
+import segno
+from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel
 
 from app.models.data_models import (
@@ -149,3 +152,28 @@ async def delete_track_record_endpoint(delete_input: LapDeleteInput):
         raise HTTPException(status_code=404, detail="No matching lap to delete")
 
     return {"deleted": True, "track": track_name}
+
+
+def _lan_ip() -> str:
+    # UDP connect sends nothing; it just picks the outbound interface.
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+        try:
+            sock.connect(("10.255.255.255", 1))
+            return sock.getsockname()[0]
+        except OSError:
+            return "127.0.0.1"
+
+
+@router.get("/api/qr.svg", tags=["Mobile"])
+async def mobile_qr_endpoint(request: Request):
+    host = request.url.hostname or ""
+    if host in ("localhost", "127.0.0.1", "::1"):
+        host = _lan_ip()
+    if ":" in host:
+        host = f"[{host}]"
+    port = request.url.port
+    netloc = host if port is None else f"{host}:{port}"
+    url = f"{request.url.scheme}://{netloc}/mobile.html"
+    svg = io.BytesIO()
+    segno.make(url, error="l").save(svg, kind="svg", scale=2, border=0, dark="#0d1117", light="#fff")
+    return Response(svg.getvalue(), media_type="image/svg+xml", headers={"Cache-Control": "no-store"})

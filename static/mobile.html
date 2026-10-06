@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>F1 Timings - Mobile</title>
+  <link rel="stylesheet" href="/display.css">
+</head>
+<body class="mobile-view">
+
+  <div class="session-header">
+    <div class="pos-badge">
+      <div class="pos-label">Drivers</div>
+      <div class="pos-value" id="driverCount">0</div>
+    </div>
+    <div class="session-info">
+      <h1 id="sessionTitle">—</h1>
+    </div>
+  </div>
+
+  <table class="timing-table hide-col-topspeed hide-col-potential hide-col-sectors hide-col-laps">
+    <thead>
+      <tr>
+        <th class="col-pos">#</th>
+        <th>Driver</th>
+        <th class="col-topspeed">Top Speed</th>
+        <th class="col-bestlap">Best Lap</th>
+        <th class="col-potential">Potential</th>
+        <th class="col-sectors">Sectors</th>
+        <th class="col-gap">Gap</th>
+        <th class="col-laps">Laps</th>
+      </tr>
+    </thead>
+    <tbody id="timingTableBody">
+    </tbody>
+  </table>
+
+  <script src="/js/dashboard-settings.js"></script>
+  <script src="/js/shared-dashboard-state.js"></script>
+  <script src="/js/formatting-and-fetch-helpers.js"></script>
+  <script src="/js/stored-lap-leaderboard.js"></script>
+  <script src="/js/mobile-view.js"></script>
+</body>
+</html>

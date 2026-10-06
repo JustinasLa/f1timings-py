@@ -2,11 +2,16 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const path = require('node:path');
 const { createDashboard, jsonResponse, plain, breakLocalStorage, SCRIPT_ORDER, JS_DIR } = require('./harness.js');
 
-test('index.html loads every file in static/js (so coverage sees them all)', () => {
+test('index.html or mobile.html loads every file in static/js (so coverage sees them all)', () => {
   const onDisk = fs.readdirSync(JS_DIR).filter((f) => f.endsWith('.js')).sort();
-  assert.deepEqual([...SCRIPT_ORDER].sort(), onDisk);
+  const mobileScripts = Array.from(
+    fs.readFileSync(path.join(JS_DIR, '..', 'mobile.html'), 'utf8').matchAll(/<script src="\/js\/([^"]+)"><\/script>/g),
+    (m) => m[1]
+  );
+  assert.deepEqual([...new Set([...SCRIPT_ORDER, ...mobileScripts])].sort(), onDisk);
 });
 
 test('dashboard settings constants are consistent', () => {
