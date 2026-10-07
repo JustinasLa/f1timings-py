@@ -279,3 +279,20 @@ test('current records errors remain visible despite healthy live data and clear 
   await env.window.loadDisplayData();
   assert.equal(env.document.getElementById('connectionBanner').hidden, true);
 });
+
+test('live timing refreshes when sectors change without rebuilding rows for map-only motion', async () => {
+  let live = { 0: { name:'Ann', team:'Team', world_x:1,world_z:1,live_lap_active:true,live_sector_1_ms:30000 } };
+  const env = createDashboard({ fetch: () => jsonResponse(live) });
+  withTrack(env);
+  env.window.updateLeaderboard(env.window.buildDriversFromRecords([{driver:'Ann',time:'1:30.000'}]));
+  await env.window.loadLiveDriverPositions();
+  const firstRow = env.document.querySelector('#timingTableBody tr');
+  assert.match(firstRow.textContent, /30\.000/);
+  live = { 0: { ...live[0], world_x:2 } };
+  await env.window.loadLiveDriverPositions();
+  assert.equal(env.document.querySelector('#timingTableBody tr'), firstRow);
+  live = { 0: { ...live[0], live_sector_1_ms:31000,live_lap_invalid:true } };
+  await env.window.loadLiveDriverPositions();
+  assert.match(env.document.querySelector('#timingTableBody tr').textContent, /31\.000/);
+  assert.notEqual(env.document.querySelector('#timingTableBody tr'), firstRow);
+});
