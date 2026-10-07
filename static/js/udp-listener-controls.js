@@ -13,9 +13,13 @@ function initializeTelemetryControls() {
 
   startButton.addEventListener("click", startUdpTelemetry);
   stopButton.addEventListener("click", stopUdpTelemetry);
+  portInput.addEventListener("input", updateTelemetryPortValidation);
   portInput.addEventListener("change", () => {
-    writeStoredValue("udpTelemetryPort", getUdpPort());
+    updateTelemetryPortValidation();
+    const port = getUdpPort();
+    if (port) writeStoredValue("udpTelemetryPort", port);
   });
+  updateTelemetryPortValidation();
 
   refreshTelemetryStatus();
   if (telemetryStatusInterval) clearInterval(telemetryStatusInterval);
@@ -24,11 +28,28 @@ function initializeTelemetryControls() {
 
 function getUdpPort() {
   const portInput = document.getElementById("udpPortInput");
-  const parsedPort = parseInt(portInput?.value, 10);
+  const parsedPort = Number(portInput?.value);
   if (Number.isInteger(parsedPort) && parsedPort >= 1024 && parsedPort <= 65535) {
     return String(parsedPort);
   }
-  return "20777";
+  return null;
+}
+
+function updateTelemetryPortValidation() {
+  const input = document.getElementById('udpPortInput');
+  const start = document.getElementById('udpStartBtn');
+  const panel = document.getElementById('udpPanel');
+  const status = document.getElementById('udpStatusText');
+  if (!input || !start || !panel || !status) return;
+  const valid = getUdpPort() !== null;
+  const message = 'Enter a port from 1024 to 65535';
+  input.setCustomValidity(valid ? '' : message);
+  input.setAttribute('aria-invalid', String(!valid));
+  start.disabled = !valid || telemetryStatusPending || panel.classList.contains('running');
+  if (!telemetryStatusPending && !panel.classList.contains('running')) {
+    if (!valid) status.textContent = message;
+    else if (status.textContent === message) status.textContent = 'UDP Off';
+  }
 }
 
 async function refreshTelemetryStatus(force = false) {
@@ -48,6 +69,10 @@ async function refreshTelemetryStatus(force = false) {
 
 async function startUdpTelemetry() {
   const port = getUdpPort();
+  if (!port) {
+    updateTelemetryPortValidation();
+    return;
+  }
   writeStoredValue("udpTelemetryPort", port);
   setTelemetryPending("Starting");
 
@@ -67,6 +92,7 @@ async function startUdpTelemetry() {
     });
   } finally {
     telemetryStatusPending = false;
+    updateTelemetryPortValidation();
   }
 }
 
@@ -89,6 +115,7 @@ async function stopUdpTelemetry() {
     });
   } finally {
     telemetryStatusPending = false;
+    updateTelemetryPortValidation();
   }
 }
 
@@ -133,4 +160,5 @@ function updateTelemetryControls(status) {
     portInput.value = status.port;
     writeStoredValue("udpTelemetryPort", String(status.port));
   }
+  updateTelemetryPortValidation();
 }

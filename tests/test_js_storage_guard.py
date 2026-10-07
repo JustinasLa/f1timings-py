@@ -13,9 +13,14 @@ const blocked = () => { throw new DOMException('The operation is insecure.', 'Se
 Object.defineProperty(globalThis, 'localStorage', { get: blocked });
 Object.defineProperty(globalThis, 'sessionStorage', { get: blocked });
 const listeners = {};
-const input = { value: '', disabled: false, addEventListener: (name, fn) => { listeners[name] = fn; } };
+const input = {
+  value: '20777', disabled: false, attributes: {}, validationMessage: '',
+  addEventListener: (name, fn) => { listeners[name] = fn; },
+  setCustomValidity(message) { this.validationMessage = message; },
+  setAttribute(name, value) { this.attributes[name] = value; },
+};
 const button = { disabled: false, addEventListener: () => {} };
-const element = { classList: { toggle() {}, remove() {}, add() {} }, textContent: '' };
+const element = { classList: { toggle() {}, remove() {}, add() {}, contains() { return false; } }, textContent: '' };
 const elements = {
   udpStartBtn: button, udpStopBtn: button, udpPortInput: input,
   udpPanel: element, udpStatusText: element, udpDriverCount: element,
@@ -59,6 +64,42 @@ def test_udp_controls_survive_blocked_storage():
 """
     )
     assert json.loads(output) == {"port": 20888}
+
+
+def test_invalid_udp_port_never_starts_even_when_storage_is_blocked():
+    output = _run_node(
+        """
+(async () => {
+  const requests = [];
+  globalThis.fetch = async (url) => {
+    requests.push(url);
+    return { ok: true, json: async () => ({ running: false }) };
+  };
+  initializeTelemetryControls();
+  input.value = '70000';
+  listeners.input();
+  await startUdpTelemetry();
+  const invalid = { port: getUdpPort(), error: input.validationMessage,
+    disabled: button.disabled, aria: input.attributes['aria-invalid'] };
+  input.value = '2e4';
+  listeners.input();
+  console.log(JSON.stringify({ invalid, validPort: getUdpPort(),
+    validError: input.validationMessage,
+    startRequests: requests.filter(url => url.startsWith('/api/telemetry/start')).length }));
+})();
+"""
+    )
+    assert json.loads(output) == {
+        "invalid": {
+            "port": None,
+            "error": "Enter a port from 1024 to 65535",
+            "disabled": True,
+            "aria": "true",
+        },
+        "validPort": "20000",
+        "validError": "",
+        "startRequests": 0,
+    }
 
 
 def test_start_dashboard_runs_every_step_when_one_throws():
