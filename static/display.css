@@ -873,14 +873,13 @@ body.kiosk .timing-filter-bar { display: none; }
 .track-placeholder-icon { font-size: 36px; opacity: 0.4; }
 
 .map-top-overlay {
-  position: absolute;
-  top: 14px;
-  left: 14px;
-  right: 14px;
+  flex-shrink: 0;
+  padding: 10px 14px 0;
   z-index: 2;
   display: flex;
   align-items: flex-start;
   gap: 12px;
+  flex-wrap: wrap;
   pointer-events: none;
 }
 
@@ -891,6 +890,7 @@ body.kiosk .timing-filter-bar { display: none; }
   border-radius: 8px;
   padding: 8px 12px;
   pointer-events: none;
+  max-width: 100%;
 }
 
 #lap-toast-container {

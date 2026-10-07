@@ -167,30 +167,30 @@
           <button id="mapZoomIn" type="button" aria-label="Zoom map in" title="Zoom in · scroll over map">+</button>
         </div>
       </div>
-      <div class="track-canvas-wrap">
-        <div id="mapDriverTooltip" class="map-driver-tooltip" role="tooltip" hidden></div>
-        <div class="map-top-overlay">
-          <div class="pole-lap-card" id="poleLapCard" style="display:none">
-            <div class="pole-lap-label">2024 Pole Lap</div>
-            <div class="pole-lap-driver">
-              <span class="pole-lap-dot" id="poleLapDot"></span>
-              <span id="poleLapDriver"></span>
-            </div>
-            <div class="pole-lap-time" id="poleLapTime">--:--.---</div>
-            <div class="pole-lap-meta" id="poleLapMeta"></div>
+      <div class="map-top-overlay">
+        <div class="pole-lap-card" id="poleLapCard" style="display:none">
+          <div class="pole-lap-label">2024 Pole Lap</div>
+          <div class="pole-lap-driver">
+            <span class="pole-lap-dot" id="poleLapDot"></span>
+            <span id="poleLapDriver"></span>
           </div>
-          <div id="lap-toast-container" role="status" aria-live="polite"></div>
-          <div class="map-conditions" id="mapConditions" style="display:none">
-            <div class="condition-marker">
-              <div class="condition-label">Track</div>
-              <div class="condition-value" id="conditionTrackTemp">--&deg;C</div>
-            </div>
-            <div class="condition-marker">
-              <div class="condition-label">Air</div>
-              <div class="condition-value" id="conditionAirTemp">--&deg;C</div>
-            </div>
+          <div class="pole-lap-time" id="poleLapTime">--:--.---</div>
+          <div class="pole-lap-meta" id="poleLapMeta"></div>
+        </div>
+        <div id="lap-toast-container" role="status" aria-live="polite"></div>
+        <div class="map-conditions" id="mapConditions" style="display:none">
+          <div class="condition-marker">
+            <div class="condition-label">Track</div>
+            <div class="condition-value" id="conditionTrackTemp">--&deg;C</div>
+          </div>
+          <div class="condition-marker">
+            <div class="condition-label">Air</div>
+            <div class="condition-value" id="conditionAirTemp">--&deg;C</div>
           </div>
         </div>
+      </div>
+      <div class="track-canvas-wrap">
+        <div id="mapDriverTooltip" class="map-driver-tooltip" role="tooltip" hidden></div>
         <canvas id="trackCanvas" width="1200" height="800" style="display:none" aria-label="Live track map. Scroll to zoom, drag to pan, double-click to reset."></canvas>
         <div class="track-placeholder" id="trackPlaceholder">
           <div class="track-placeholder-icon" aria-hidden="true">&#127937;</div>
