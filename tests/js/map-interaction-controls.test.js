@@ -144,6 +144,22 @@ test('cancelled and lost pointer capture gestures terminate; reset terminates an
   assert.deepEqual(transform(env.map), { x: 0, y: 0, zoom: 1 });
 });
 
+test('secondary pointers and additional pointerdowns cannot replace the primary drag', () => {
+  const env = interactions();
+  button(env, 'mapZoomIn').click();
+  pointer(env, 'pointerdown', { isPrimary: false, pointerId: 2 });
+  assert.deepEqual(env.captures, []);
+  pointer(env, 'pointerdown', { pointerId: 7 });
+  pointer(env, 'pointerdown', { pointerId: 8, clientX: 600 });
+  assert.deepEqual(env.captures, [7]);
+  pointer(env, 'pointermove', { pointerId: 7, clientX: 330 });
+  assert.deepEqual(transform(env.map), { x: 20, y: 0, zoom: 1.25 });
+  pointer(env, 'pointerup', { pointerId: 7 });
+  live(env, { alice: driver() });
+  pointer(env, 'pointermove', { isPrimary: false });
+  assert.equal(env.tooltip.hidden, true);
+});
+
 test('divider resize observation clamps panning to the new map size while preserving zoom', () => {
   const env = interactions(before => {
     before.observed = [];
