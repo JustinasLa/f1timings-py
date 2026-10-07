@@ -86,13 +86,36 @@ test('parseTimeToSeconds handles all supported formats', () => {
   assert.equal(w.parseTimeToSeconds(null), Infinity);
   assert.equal(w.parseTimeToSeconds('1:23.456'), 83.456);
   assert.equal(w.parseTimeToSeconds('1:23'), 83);
-  assert.equal(w.parseTimeToSeconds('1:2:3.4'), 1); // odd colon format falls back to parseFloat
-  assert.equal(w.parseTimeToSeconds('1:2:3:4'), 1);
+  assert.equal(w.parseTimeToSeconds('1:2:3.4'), Infinity);
+  assert.equal(w.parseTimeToSeconds('1:2:3:4'), Infinity);
   assert.equal(w.parseTimeToSeconds('1.23.456'), 83.456);
   assert.equal(w.parseTimeToSeconds('83.5'), 83.5);
   assert.equal(w.parseTimeToSeconds('90'), 90);
   assert.equal(w.parseTimeToSeconds('0'), Infinity);
   assert.equal(w.parseTimeToSeconds('abc'), Infinity);
+});
+
+test('parseTimeToSeconds rejects malformed values without coercion or partial parsing', () => {
+  const { window: w } = createDashboard();
+  const invalid = [undefined, null, false, true, {}, [], [90], () => 90,
+    0, -1, NaN, Infinity, -Infinity, '', ' ', '0.000', '0:00.000', '0.00.000',
+    '-1', '-1:30.000', '-1.30.000', '90junk', '1:xx.000', '1:20:30',
+    '1:60.000', '1.60.000', '1:90', '1.2.3.4', '1e2', 'NaN', 'Infinity',
+    '1:23.456junk', '.5', '90\n20', '9'.repeat(400),
+    '9'.repeat(400) + ':00.000', '9'.repeat(400) + '.00.000'];
+  for (const value of invalid) {
+    assert.equal(w.parseTimeToSeconds(value), Infinity, `unexpected parse for ${String(value)}`);
+    assert.equal(w.formatTime(value), 'N/A');
+  }
+});
+
+test('parseTimeToSeconds supports positive numeric inputs, trimmed strings and fractional sectors', () => {
+  const { window: w } = createDashboard();
+  for (const [value, expected] of [[90, 90], [0.001, 0.001], [90.125, 90.125],
+    [' 1:23.456 ', 83.456], ['0:00.001', 0.001], ['0.00.001', 0.001],
+    ['1:2', 62], ['1.2.3', 62.3], ['00090', 90], ['1:59.999', 119.999]]) {
+    assert.equal(w.parseTimeToSeconds(value), expected);
+  }
 });
 
 test('formatSeconds, formatTime and formatGap', () => {
