@@ -48,10 +48,13 @@ async function loadDisplayData() {
 
 function ensureDisplayedTrack() {
   if (displayedRecordsTrack !== null && displayedRecordsTrack !== currentTrack) {
+    latestLiveDrivers = {};
     updateLeaderboard({});
     updateFastestLapPill({});
     updatePoleLapCard([]);
     recordsFetchFailed = false;
+    refreshLiveTiming();
+    if (typeof refreshMapDriverTooltip === 'function') refreshMapDriverTooltip();
   }
   displayedRecordsTrack = currentTrack;
 }
@@ -108,8 +111,16 @@ function refreshLiveTiming() {
 async function loadLiveDriverPositions() {
   if (liveDriversInFlight) return;
   liveDriversInFlight = true;
+  const requestedTrack = currentTrack;
   try {
-    const liveDrivers = await fetchJsonWithTimeout("/api/drivers/live", 1500);
+    const response = await fetchJsonWithTimeout("/api/drivers/live", 1500);
+    if (requestedTrack !== currentTrack) return;
+    if (!response || typeof response !== 'object' || Array.isArray(response)) {
+      throw new Error('Invalid live driver data');
+    }
+    const liveDrivers = Object.fromEntries(Object.entries(response).filter(([, driver]) =>
+      driver && typeof driver === 'object' && !Array.isArray(driver)
+    ));
     lastLivePollOkAt = Date.now();
     updateConnectionBanner();
     latestLiveDrivers = liveDrivers;
@@ -125,9 +136,12 @@ async function loadLiveDriverPositions() {
       redrawCompleteTrack();
     }
   } catch {
-    const tooltip = document.getElementById('mapDriverTooltip');
-    if (tooltip) tooltip.hidden = true;
-    if (trackData) redrawCompleteTrack();
+    if (requestedTrack === currentTrack) {
+      latestLiveDrivers = {};
+      refreshLiveTiming();
+      if (typeof refreshMapDriverTooltip === 'function') refreshMapDriverTooltip();
+      if (trackData) redrawCompleteTrack();
+    }
   } finally {
     liveDriversInFlight = false;
   }
