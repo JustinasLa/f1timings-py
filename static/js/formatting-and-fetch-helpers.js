@@ -38,18 +38,26 @@ function hasLivePosition(driver) {
     && Number.isFinite(driver.world_z);
 }
 function parseTimeToSeconds(t) {
-  if (!t) return Infinity;
-  if (t.includes(':')) {
-    const parts = t.split(/[:.]/);
-    if (parts.length === 3) return parseInt(parts[0]) * 60 + parseInt(parts[1]) + parseFloat(`0.${parts[2]}`);
-    if (parts.length === 2) return parseInt(parts[0]) * 60 + parseInt(parts[1]);
+  if (typeof t === 'number') {
+    return Number.isFinite(t) && t > 0 ? t : Infinity;
   }
-  if (t.includes('.')) {
-    const parts = t.split('.');
-    if (parts.length === 3) return parseInt(parts[0]) * 60 + parseInt(parts[1]) + parseFloat(`0.${parts[2]}`);
-    return parseFloat(t);
+  if (typeof t !== 'string') return Infinity;
+  const text = t.trim();
+  if (!/^(?:\d+:\d+(?:\.\d+)?|\d+\.\d+\.\d+|\d+(?:\.\d+)?)$/.test(text)) return Infinity;
+
+  let seconds;
+  if (text.includes(':')) {
+    const parts = text.split(':');
+    if (Number(parts[1]) >= 60) return Infinity;
+    seconds = Number(parts[0]) * 60 + Number(parts[1]);
+  } else if (text.split('.').length === 3) {
+    const parts = text.split('.');
+    if (Number(parts[1]) >= 60) return Infinity;
+    seconds = Number(parts[0]) * 60 + Number(parts[1]) + Number(`0.${parts[2]}`);
+  } else {
+    seconds = Number(text);
   }
-  return parseFloat(t) || Infinity;
+  return Number.isFinite(seconds) && seconds > 0 ? seconds : Infinity;
 }
 
 function formatSeconds(s) {
