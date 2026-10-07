@@ -53,8 +53,17 @@ function autoFitLayoutToColumns() {
   const naturalTableWidth = table.offsetWidth;
   table.style.width = previousWidth;
 
+  const header = document.querySelector('.section-title');
+  let headerWidth = 0;
+  if (header) {
+    const previousHeaderWidth = header.style.width;
+    header.style.width = 'max-content';
+    headerWidth = header.offsetWidth;
+    header.style.width = previousHeaderWidth;
+  }
+
   const extraRoom = 18;
-  applyLayoutLeftWidth(naturalTableWidth + extraRoom);
+  applyLayoutLeftWidth(Math.max(naturalTableWidth + extraRoom, headerWidth));
 }
 
 function resizeFromPointer(clientX) {

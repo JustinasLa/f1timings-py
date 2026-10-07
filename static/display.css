@@ -255,12 +255,16 @@ body.layout-resizing {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 12px;
 }
 
 .column-settings {
   position: relative;
   display: flex;
   gap: 6px;
+  flex-wrap: wrap;
+  min-width: 0;
 }
 .export-csv-link {
   border: 1px solid var(--border);

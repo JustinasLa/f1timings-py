@@ -216,3 +216,17 @@ test('divider initialization tolerates a missing layout', () => {
   const env = createDashboard({ html: '<div id="layoutDivider"></div>' });
   assert.doesNotThrow(() => env.window.initializeLayoutDivider());
 });
+
+test('auto fit reserves room for toolbar controls even with very few columns', () => {
+  const env = createDashboard();
+  const layout = withGeometry(env, { tableWidth: 180 });
+  const header = env.document.querySelector('.section-title');
+  header.style.width = '75%';
+  Object.defineProperty(header, 'offsetWidth', { get: () => header.style.width === 'max-content' ? 480 : 100 });
+  env.window.autoFitLayoutToColumns();
+  assert.equal(leftWidth(layout), '480px');
+  assert.equal(header.style.width, '75%');
+  header.remove();
+  env.window.autoFitLayoutToColumns();
+  assert.equal(leftWidth(layout), '240px');
+});
