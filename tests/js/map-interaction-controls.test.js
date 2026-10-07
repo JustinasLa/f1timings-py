@@ -10,7 +10,7 @@ function interactions(beforeInitialize) {
   const tooltip = env.document.getElementById('mapDriverTooltip');
   Object.defineProperties(map, { offsetWidth: { configurable: true, value: 600 }, offsetHeight: { configurable: true, value: 400 } });
   Object.defineProperties(tooltip, { offsetWidth: { value: 180 }, offsetHeight: { value: 100 } });
-  wrap.getBoundingClientRect = () => ({ left: 10, top: 20, width: 600, height: 400 });
+  wrap.getBoundingClientRect = () => ({ left: 10, top: 20, width: map.offsetWidth, height: map.offsetHeight });
   map.getBoundingClientRect = () => {
     const { x, y, zoom } = transform(map);
     return { left: 10 + 300 * (1 - zoom) + x, top: 20 + 200 * (1 - zoom) + y, width: 600 * zoom, height: 400 * zoom };
@@ -188,7 +188,7 @@ test('divider resize observation clamps panning to the new map size while preser
       observe(target) { before.observed.push(target); }
     };
   });
-  assert.deepEqual(env.observed, [env.map]);
+  assert.deepEqual(env.observed, [env.map, env.map.parentElement]);
   button(env, 'mapZoomIn').click();
   pointer(env, 'pointerdown');
   pointer(env, 'pointermove', { clientX: 1000, clientY: 1000 });
@@ -216,6 +216,23 @@ test('window resize clamps map pan when ResizeObserver is unavailable', () => {
   env.window.dispatchEvent(new env.window.Event('resize'));
   assert.deepEqual(transform(env.map), { x: -25, y: -20, zoom: 1.25 });
   assert.equal(button(env, 'mapZoomOut').disabled, false);
+});
+
+test('pan limits use the wrapper viewport when a letterboxed canvas is smaller', () => {
+  const env = interactions();
+  const wrap = env.map.parentElement;
+  wrap.getBoundingClientRect = () => ({ left: 10, top: 20, width: 900, height: 500 });
+  button(env, 'mapZoomIn').click();
+  pointer(env, 'pointerdown');
+  pointer(env, 'pointermove', { clientX: 1000, clientY: 1000 });
+  assert.deepEqual(transform(env.map), { x: 0, y: 0, zoom: 1.25 });
+  pointer(env, 'pointerup');
+  button(env, 'mapZoomIn').click();
+  pointer(env, 'pointerdown');
+  pointer(env, 'pointermove', { clientX: 1000, clientY: 1000 });
+  assert.deepEqual(transform(env.map), { x: 18.75, y: 62.5, zoom: 1.5625 });
+  pointer(env, 'pointermove', { clientX: -1000, clientY: -1000 });
+  assert.deepEqual(transform(env.map), { x: -18.75, y: -62.5, zoom: 1.5625 });
 });
 
 test('hover handles missing map data, transform, track, dimensions or nearby live positions', () => {
