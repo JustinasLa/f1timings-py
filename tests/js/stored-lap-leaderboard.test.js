@@ -890,3 +890,16 @@ test('hiding the position column keeps lap deletion in the visible name cell', (
     assert.equal(button.closest('tr').cells.length, 10);
   }
 });
+
+test('valid-only expanded history finds older valid laps before applying the five-lap limit', () => {
+  const env = createDashboard();
+  const w = env.window;
+  const records = Array.from({ length: 8 }, (_, index) => rec('Ann', `1:2${index}.000`, {
+    is_valid: index < 2, recorded_at: `2026-01-01T10:0${index}:00`
+  }));
+  w.updateLeaderboard(w.buildDriversFromRecords(records));
+  env.set('leaderboardValidOnly', true);
+  w.toggleDriverExpand('Ann');
+  const details = Array.from(env.document.querySelectorAll('.lap-detail-row .laptime-badge'));
+  assert.deepEqual(details.map(lap => lap.textContent), ['1:21.000', '1:20.000']);
+});

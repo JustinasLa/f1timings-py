@@ -727,7 +727,8 @@ function buildPbProgressionRow(driver) {
 }
 
 function buildLapDetailRow(driver, fastestValidTime) {
-  const laps = (driver.recent_laps || []).filter(lap => !leaderboardValidOnly || lap.is_valid !== false);
+  const history = driver.all_laps || driver.recent_laps || [];
+  const laps = history.filter(lap => !leaderboardValidOnly || lap.is_valid !== false).slice(0, 5);
   if (laps.length === 0) {
     return `<tr class="lap-detail-row"><td colspan="10">No recent laps</td></tr>`;
   }
