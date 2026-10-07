@@ -759,8 +759,8 @@ function buildLapDetailRow(driver, fastestValidTime) {
       ' data-recorded-at="' + escapeAttr(lap.recorded_at || '') + '">&times;</button>';
 
     rowsHtml += `<tr class="lap-detail-row ${stripeClass}">
-      <td class="td-pos col-pos">${deleteButtonHtml}</td>
-      <td class="lap-detail-when">${escapeHtml(clock)}</td>
+      <td class="td-pos col-pos"></td>
+      <td class="lap-detail-when"><span>${escapeHtml(clock)}</span>${deleteButtonHtml}</td>
       <td class="td-laps col-topspeed">${formatTopSpeed(lap.fastest_speed_kph)}</td>
       <td class="col-bestlap">
         <span class="laptime-badge ${badgeClass}">${formatTime(lap.time)}</span>${formatTyreTag(lap.tyre)}${formatAssistsTag(lap.assists)}
