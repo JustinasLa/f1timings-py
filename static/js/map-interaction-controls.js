@@ -95,7 +95,7 @@ function initializeMapInteractions() {
     changeZoom(zoom * (event.deltaY < 0 ? 1.25 : 0.8), event.clientX, event.clientY);
   }, { passive: false });
   map.addEventListener('pointerdown', event => {
-    if (event.button !== 0 || zoom <= 1) return;
+    if (event.button !== 0 || event.isPrimary === false || drag || zoom <= 1) return;
     drag = { id: event.pointerId, x: event.clientX, y: event.clientY, panX, panY };
     map.setPointerCapture(event.pointerId);
     map.classList.add('map-dragging');
@@ -108,7 +108,7 @@ function initializeMapInteractions() {
       panX = drag.panX + event.clientX - drag.x;
       panY = drag.panY + event.clientY - drag.y;
       apply();
-    } else showDriver(event);
+    } else if (event.isPrimary !== false) showDriver(event);
   });
   function endDrag(event) {
     if (!drag || event.pointerId !== drag.id) return;
