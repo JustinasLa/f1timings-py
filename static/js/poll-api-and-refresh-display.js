@@ -67,7 +67,7 @@ async function refreshDisplayData() {
     const url = "/api/track/records?track=" + encodeURIComponent(requestedTrack);
     const response = await fetchJsonWithTimeout(url, 1500);
     if (requestedTrack !== currentTrack) return;
-    const records = Array.isArray(response.lap_times) ? response.lap_times : [];
+    const records = Array.isArray(response?.lap_times) ? response.lap_times.filter(isUsableLapRecord) : [];
     updateEventDateOptions(records);
     const drivers = buildDriversFromRecords(filterRecordsByEventDate(records));
     updateLeaderboard(drivers);
@@ -76,6 +76,13 @@ async function refreshDisplayData() {
   } catch (e) {
     if (requestedTrack === currentTrack) console.error("Error loading display data:", e);
   }
+}
+
+function isUsableLapRecord(record) {
+  return record !== null && typeof record === 'object' && !Array.isArray(record)
+    && (typeof record.time === 'string' || typeof record.time === 'number')
+    && Number.isFinite(parseTimeToSeconds(record.time)) && parseTimeToSeconds(record.time) > 0
+    && (record.driver === undefined || typeof record.driver === 'string');
 }
 
 async function loadLiveDriverPositions() {

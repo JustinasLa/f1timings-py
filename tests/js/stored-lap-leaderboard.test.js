@@ -788,7 +788,7 @@ test('malformed records cannot hide valid laps, win best lap selection, or earn 
   env.fetchHandler = () => jsonResponse({ lap_times: records });
   await w.refreshDisplayData();
   assert.equal(env.logs.error.length, 0);
-  assert.deepEqual(rows(env.document).map(row => row.dataset.driver), ['Ann', 'Invalid', 'Broken']);
+  assert.deepEqual(rows(env.document).map(row => row.dataset.driver), ['Ann', 'Invalid']);
 });
 
 test('sector calculations normalize numeric strings and reject malformed or nonfinite values', () => {
