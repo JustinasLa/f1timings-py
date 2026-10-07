@@ -35,8 +35,8 @@ function updateDriverAliasPanel(liveDrivers) {
     telemetryNames.push({
       telemetryName,
       displayName: driverAliasDrafts.has(key) ? driverAliasDrafts.get(key) :
-        driverAliases[key] || driver.name || telemetryName,
-      savedName: driverAliases[key] || driver.name || telemetryName,
+        (Object.hasOwn(driverAliases, key) && typeof driverAliases[key] === 'string' && driverAliases[key]) || driver.name || telemetryName,
+      savedName: (Object.hasOwn(driverAliases, key) && typeof driverAliases[key] === 'string' && driverAliases[key]) || driver.name || telemetryName,
       instanceIndex: driver.instance_index
     });
   }
