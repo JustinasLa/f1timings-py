@@ -1,4 +1,30 @@
 let lastLeaderboardRowsHtml = null;
+let leaderboardSearchQuery = '';
+let leaderboardValidOnly = false;
+
+function initializeLeaderboardFilters() {
+  const search = document.getElementById('leaderboardSearch');
+  const validOnly = document.getElementById('leaderboardValidOnly');
+  if (search) {
+    leaderboardSearchQuery = search.value.trim().toLowerCase();
+    search.oninput = function () {
+      leaderboardSearchQuery = search.value.trim().toLowerCase();
+      updateLeaderboard(latestLeaderboardDrivers);
+    };
+  }
+  if (validOnly) {
+    leaderboardValidOnly = validOnly.checked;
+    validOnly.onchange = function () {
+      leaderboardValidOnly = validOnly.checked;
+      updateLeaderboard(latestLeaderboardDrivers);
+    };
+  }
+}
+
+function matchesLeaderboardFilters(driver, lap) {
+  return (!leaderboardValidOnly || lap.is_valid !== false) &&
+    (String(driver.name) + ' ' + String(driver.team)).toLowerCase().includes(leaderboardSearchQuery);
+}
 
 let leaderboardPersonalBestSectors = {};
 let leaderboardOverallBestSectors = { s1: 0, s2: 0, s3: 0 };
@@ -505,6 +531,8 @@ function updateLeaderboard(drivers) {
       }
       previousValidTime = lapSec;
     }
+    // Keep positions and intervals relative to the complete timing order.
+    if (!matchesLeaderboardFilters(driver, lap)) continue;
     let lapCountText = String(driver.lap_count || 1);
     let rowStateClass = !lap.is_valid ? 'invalid-row' : lap.is_fastest ? 'fastest-row' : '';
 
@@ -540,6 +568,9 @@ function updateLeaderboard(drivers) {
     if (isExpanded) {
       rowsHtml += buildLapDetailRow(driver, fastestValidTime);
     }
+  }
+  if (!rowsHtml) {
+    rowsHtml = '<tr class="no-data-row"><td colspan="10">No drivers match these filters</td></tr>';
   }
   if (rowsHtml !== lastLeaderboardRowsHtml) {
     tbody.innerHTML = rowsHtml;
@@ -655,7 +686,7 @@ function buildPbProgressionRow(driver) {
 }
 
 function buildLapDetailRow(driver, fastestValidTime) {
-  const laps = driver.recent_laps || [];
+  const laps = (driver.recent_laps || []).filter(lap => !leaderboardValidOnly || lap.is_valid !== false);
   if (laps.length === 0) {
     return `<tr class="lap-detail-row"><td colspan="10">No recent laps</td></tr>`;
   }
