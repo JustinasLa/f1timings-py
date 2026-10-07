@@ -342,13 +342,18 @@ function redrawCompleteTrack() {
 const GAIN_COLOR = '#2ecc71';
 const LOSS_COLOR = '#e74c3c';
 const lapTraceCache = {};
+const lapTraceRequests = {};
 let gainLossCache = { key: '', track: null, colors: [] };
 
 function getLapTrace(driver) {
   const lap = driver.lap_times[0];
   const key = currentTrack + '|' + driver.name + '|' + lap.time;
-  if (!(key in lapTraceCache)) {
+  const request = lapTraceRequests[key];
+  if (!lapTraceCache[key] && (!request || (!request.inFlight && Date.now() >= request.nextAt))) {
     lapTraceCache[key] = null;
+    const state = request || { inFlight: false, failures: 0, nextAt: 0 };
+    lapTraceRequests[key] = state;
+    state.inFlight = true;
     const url = '/api/track/trace?track=' + encodeURIComponent(currentTrack) +
       '&driver=' + encodeURIComponent(driver.name);
     fetchJsonWithTimeout(url, 1500)
@@ -358,7 +363,15 @@ function getLapTrace(driver) {
           lapTraceCache[key] = trace.samples;
         }
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => {
+        state.inFlight = false;
+        if (!lapTraceCache[key]) {
+          state.failures++;
+          state.nextAt = Date.now() + Math.min(DATA_RETRY_MAX_MS,
+            DATA_RETRY_MIN_MS * 2 ** Math.min(state.failures - 1, 4));
+        }
+      });
   }
   return lapTraceCache[key];
 }

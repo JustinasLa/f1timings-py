@@ -615,3 +615,42 @@ test('an aborted map request releases its in-flight state so polling can retry',
   assert.equal(env.get('trackMapRetry').nextAt, env.clock.now + 2000);
   assert.equal(env.document.getElementById('trackCanvas').style.display, 'none');
 });
+
+test('trace errors and mismatched traces recover after backoff without duplicate requests', async () => {
+  let valid = false;
+  const env = createDashboard({ fetch: url => {
+    const name = url.slice(-1);
+    if (valid) return jsonResponse({ time: '1:21.000', samples: DRIVER_TRACE });
+    if (name === 'A') throw new Error('offline');
+    if (name === 'B') return jsonResponse({ time: 'old', samples: DRIVER_TRACE });
+    if (name === 'C') return jsonResponse({ time: '1:21.000', samples: [] });
+    return jsonResponse({}, 404);
+  } });
+  env.set('currentTrack', 'monza');
+  const drivers = ['A', 'B', 'C', 'D'].map(name => ({ name, lap_times: [{ time: '1:21.000' }] }));
+  for (const driver of drivers) {
+    assert.equal(env.window.getLapTrace(driver), null);
+    assert.equal(env.window.getLapTrace(driver), null);
+  }
+  await env.flush();
+  assert.equal(env.fetchCalls.length, 4);
+  for (const delay of [2000, 4000, 8000, 16000, 30000, 30000]) {
+    for (const driver of drivers) env.window.getLapTrace(driver);
+    const count = env.fetchCalls.length;
+    env.clock.advance(delay - 1);
+    for (const driver of drivers) env.window.getLapTrace(driver);
+    await env.flush();
+    assert.equal(env.fetchCalls.length, count);
+    env.clock.advance(1);
+    for (const driver of drivers) env.window.getLapTrace(driver);
+    await env.flush();
+    assert.equal(env.fetchCalls.length, count + 4);
+  }
+  valid = true;
+  env.clock.advance(30000);
+  for (const driver of drivers) env.window.getLapTrace(driver);
+  await env.flush();
+  const count = env.fetchCalls.length;
+  for (const driver of drivers) assert.deepEqual(plain(env.window.getLapTrace(driver)), DRIVER_TRACE);
+  assert.equal(env.fetchCalls.length, count, 'successful traces stay cached');
+});
