@@ -12,7 +12,7 @@ JS_DIR = STATIC_DIR / "js"
 PRELUDE = "var now = 0; Date.now = () => now;\n"
 
 HARNESS = """
-var currentTrack = "monza", trackData = null, latestLiveDrivers = {}, fetchDataInterval = null;
+var currentTrack = "monza", trackData = {}, trackRendered = true, latestLiveDrivers = {}, latestLeaderboardDrivers = {}, fetchDataInterval = null;
 var socket, canvas = { style: {} }, ctx = {};
 var tick = null, calls = [], liveOk = true, serverTrack = "Monza", viz = [];
 var banner = { hidden: true };
@@ -25,9 +25,11 @@ WebSocket = function () { socket = this; };
 updateDriverAliasPanel = drawDriversOnTrack = redrawCompleteTrack = updateTrackConditions = () => {};
 updateLeaderboard = updateFastestLapPill = updatePoleLapCard = () => {};
 updateTrackUI = updateTrackSelectValue = () => {};
-loadTrackVisualization = (name) => { viz.push(name); };
+loadTrackVisualization = (name) => { viz.push(name); trackData = {}; trackRendered = true; };
 hasLivePosition = () => false;
 buildDriversFromRecords = () => ({});
+updateEventDateOptions = () => {};
+filterRecordsByEventDate = (records) => records;
 fetchJsonWithTimeout = (url) => {
   calls.push("GET " + url);
   if (url.startsWith("/api/drivers/live") && !liveOk) return Promise.reject(new Error("down"));
@@ -56,7 +58,7 @@ def _run(script):
         )
     )
     program = PRELUDE + source + HARNESS + "(async () => {\n" + script + "\n})().catch((e) => { console.log(e.stack); process.exit(1); });"
-    result = subprocess.run([node, "-e", program], capture_output=True, text=True, timeout=30)
+    result = subprocess.run([node, "-"], input=program, capture_output=True, text=True, timeout=30)
     assert result.returncode == 0, result.stdout + result.stderr
     return json.loads(result.stdout.strip().splitlines()[-1])
 
