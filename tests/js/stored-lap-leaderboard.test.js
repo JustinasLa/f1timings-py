@@ -865,3 +865,11 @@ test('expansion buttons expose native keyboard semantics and keep focus through 
   w.updateLeaderboard(drivers);
   assert.equal(env.document.querySelector('.expand-toggle'), null);
 });
+
+test('PB chart spans all ten leaderboard columns', () => {
+  const env = createDashboard();
+  const w = env.window;
+  w.updateLeaderboard(w.buildDriversFromRecords([rec('Ann', '1:23.000'), rec('Ann', '1:24.000')]));
+  w.toggleDriverExpand('Ann');
+  assert.equal(env.document.querySelector('.pb-chart-row td').colSpan, 10);
+});
