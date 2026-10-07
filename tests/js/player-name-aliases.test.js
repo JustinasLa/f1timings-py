@@ -212,3 +212,16 @@ test('alias lookups ignore prototype properties and support an own __proto__ ali
   assert.equal({}.polluted, undefined);
 });
 
+test('each alias input and Save button names its driver accessibly and escapes that name', () => {
+  const env = createDashboard();
+  const name = 'Driver "quoted" <name>';
+  env.window.updateDriverAliasPanel({ 0: { name }, 1: { name: 'Other driver' } });
+  const rows = [...env.document.querySelectorAll('.driver-alias-row')];
+  assert.equal(rows[0].querySelector('input').getAttribute('aria-label'), 'Player name for ' + name);
+  assert.equal(rows[0].querySelector('button').getAttribute('aria-label'), 'Save player name for ' + name);
+  assert.equal(rows[0].querySelector('button').type, 'button');
+  assert.equal(rows[1].querySelector('input').getAttribute('aria-label'), 'Player name for Other driver');
+  assert.equal(rows[1].querySelector('button').getAttribute('aria-label'), 'Save player name for Other driver');
+  assert.equal(env.document.querySelectorAll('name').length, 0);
+});
+

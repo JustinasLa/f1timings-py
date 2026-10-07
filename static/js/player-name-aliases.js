@@ -58,8 +58,8 @@ function updateDriverAliasPanel(liveDrivers) {
       <div class="driver-alias-row">
         <span class="driver-alias-dot" style="background:${color}"></span>
         <span class="driver-alias-raw">${escapeHtml(item.telemetryName)}</span>
-        <input class="driver-alias-input" data-telemetry-name="${escapeAttr(item.telemetryName)}" data-saved-value="${escapeAttr(item.savedName)}" value="${escapeAttr(item.displayName)}" placeholder="Player name">
-        <button class="driver-alias-save" data-telemetry-name="${escapeAttr(item.telemetryName)}">Save</button>
+        <input class="driver-alias-input" data-telemetry-name="${escapeAttr(item.telemetryName)}" data-saved-value="${escapeAttr(item.savedName)}" value="${escapeAttr(item.displayName)}" aria-label="Player name for ${escapeAttr(item.telemetryName)}" placeholder="Player name">
+        <button class="driver-alias-save" type="button" data-telemetry-name="${escapeAttr(item.telemetryName)}" aria-label="Save player name for ${escapeAttr(item.telemetryName)}">Save</button>
       </div>
     `;
   }).join('');
