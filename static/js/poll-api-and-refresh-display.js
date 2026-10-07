@@ -5,6 +5,7 @@ let lastRecordsFetchAt = 0;
 let lastLivePollOkAt = Date.now();
 let displayedRecordsTrack = null;
 let recordsFetchFailed = false;
+let lastLiveTimingSignature = '';
 
 function startDataFetching() {
   if (fetchDataInterval) clearInterval(fetchDataInterval);
@@ -93,6 +94,17 @@ function isUsableLapRecord(record) {
     && (record.driver === undefined || typeof record.driver === 'string');
 }
 
+function refreshLiveTiming() {
+  const timingSignature = JSON.stringify([currentTrack, Object.values(latestLiveDrivers).map(d =>
+    [d.name, d.team, d.live_lap_active, d.live_lap_invalid,
+      d.live_sector_1_ms, d.live_sector_2_ms, d.live_sector_3_ms]
+  )]);
+  if (timingSignature !== lastLiveTimingSignature) {
+    lastLiveTimingSignature = timingSignature;
+    updateLeaderboard(latestLeaderboardDrivers);
+  }
+}
+
 async function loadLiveDriverPositions() {
   if (liveDriversInFlight) return;
   liveDriversInFlight = true;
@@ -103,6 +115,7 @@ async function loadLiveDriverPositions() {
     latestLiveDrivers = liveDrivers;
     if (typeof refreshMapDriverTooltip === 'function') refreshMapDriverTooltip();
     updateDriverAliasPanel(liveDrivers);
+    refreshLiveTiming();
     const withPos = Object.entries(liveDrivers).filter(([, d]) =>
       hasLivePosition(d)
     );
