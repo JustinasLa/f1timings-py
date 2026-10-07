@@ -91,6 +91,7 @@ function initializeMapInteractions() {
   reset.addEventListener('click', resetView);
   map.addEventListener('dblclick', resetView);
   map.addEventListener('wheel', event => {
+    if (drag) return;
     event.preventDefault();
     changeZoom(zoom * (event.deltaY < 0 ? 1.25 : 0.8), event.clientX, event.clientY);
   }, { passive: false });

@@ -144,6 +144,17 @@ test('cancelled and lost pointer capture gestures terminate; reset terminates an
   assert.deepEqual(transform(env.map), { x: 0, y: 0, zoom: 1 });
 });
 
+test('wheel during a drag preserves zoom and the original pan anchor', () => {
+  const env = interactions();
+  button(env, 'mapZoomIn').click();
+  pointer(env, 'pointerdown');
+  pointer(env, 'pointermove', { clientX: 330 });
+  assert.equal(wheel(env, -1).defaultPrevented, false);
+  assert.deepEqual(transform(env.map), { x: 20, y: 0, zoom: 1.25 });
+  pointer(env, 'pointermove', { clientX: 340 });
+  assert.deepEqual(transform(env.map), { x: 30, y: 0, zoom: 1.25 });
+});
+
 test('secondary pointers and additional pointerdowns cannot replace the primary drag', () => {
   const env = interactions();
   button(env, 'mapZoomIn').click();
