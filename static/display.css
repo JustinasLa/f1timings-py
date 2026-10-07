@@ -672,6 +672,7 @@ body.layout-resizing {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
+  flex-wrap: wrap;
   flex-shrink: 0;
 }
 .track-header-main {
@@ -687,6 +688,8 @@ body.layout-resizing {
   text-transform: uppercase;
   letter-spacing: 0.6px;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .track-dropdown {
   position: relative;
@@ -1232,6 +1235,25 @@ body.kiosk #toast-container {
 body.kiosk-idle,
 body.kiosk-idle * {
   cursor: none !important;
+}
+
+@media (max-width: 700px) {
+  body { height: auto; min-height: 100vh; overflow: auto; }
+  .session-header { flex-wrap: wrap; gap: 10px; padding: 10px 12px; }
+  .session-logos img { max-width: 85px; height: 30px; }
+  .session-info { min-width: 130px; }
+  .udp-panel { width: 100%; min-width: 0; }
+  .main-layout { display: flex; flex-direction: column; flex: none; overflow: visible; }
+  .layout-divider { display: none; }
+  .timing-area { min-height: 240px; max-height: 55vh; }
+  .track-area { height: max(420px, 80vh); border-top: 1px solid var(--border); }
+  .track-header { gap: 8px; }
+  .track-header-main { flex: 1 1 170px; }
+  .driver-alias-row { grid-template-columns: 10px minmax(0, 1fr) minmax(0, 1.2fr) auto; }
+  .map-top-overlay { gap: 8px; }
+  .pole-lap-card { padding: 6px 8px; }
+  .map-conditions { gap: 4px; }
+  .condition-marker { padding: 6px; }
 }
 
 /* Shorten rather than drop motion: toasts are removed on animationend. */
