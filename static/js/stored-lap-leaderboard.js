@@ -437,6 +437,9 @@ function buildDriversFromRecords(records) {
     laps.sort(function (a, b) {
       const timeA = a.recorded_at || '';
       const timeB = b.recorded_at || '';
+      const timestampA = Date.parse(timeA);
+      const timestampB = Date.parse(timeB);
+      if (Number.isFinite(timestampA) && Number.isFinite(timestampB)) return timestampB - timestampA;
       if (timeA < timeB) return 1;
       if (timeA > timeB) return -1;
       return 0;

@@ -808,3 +808,12 @@ test('sector calculations normalize numeric strings and reject malformed or nonf
   assert.equal(w.formatTopSpeed({}), '—');
   assert.equal(w.formatTopSpeed(-1), '—');
 });
+
+test('recent lap chronology compares parsed instants including timezone offsets', () => {
+  const { window: w } = createDashboard();
+  const drivers = w.buildDriversFromRecords([
+    rec('Ann', '1:21.000', { recorded_at: '2026-01-01T10:00:00+02:00' }),
+    rec('Ann', '1:22.000', { recorded_at: '2026-01-01T09:30:00Z' })
+  ]);
+  assert.deepEqual(plain(drivers.Ann.recent_laps.map(lap => lap.time)), ['1:22.000', '1:21.000']);
+});
