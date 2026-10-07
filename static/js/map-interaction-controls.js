@@ -4,6 +4,10 @@ function resetMapInteractions() {
   if (mapInteractionController) mapInteractionController.reset();
 }
 
+function refreshMapDriverTooltip() {
+  if (mapInteractionController) mapInteractionController.refresh();
+}
+
 function initializeMapInteractions() {
   const map = document.getElementById('trackCanvas');
   const zoomIn = document.getElementById('mapZoomIn');
@@ -16,6 +20,12 @@ function initializeMapInteractions() {
   let panX = 0;
   let panY = 0;
   let drag = null;
+  let hoverPointer = null;
+
+  function clearHover() {
+    hoverPointer = null;
+    tooltip.hidden = true;
+  }
 
   function apply() {
     const viewport = wrap.getBoundingClientRect();
@@ -28,7 +38,7 @@ function initializeMapInteractions() {
     reset.setAttribute('aria-label', 'Reset map zoom (' + reset.textContent + ')');
     zoomIn.disabled = zoom >= 4;
     zoomOut.disabled = zoom <= 1;
-    tooltip.hidden = true;
+    clearHover();
   }
   function changeZoom(next, clientX, clientY) {
     next = Math.max(1, Math.min(4, next));
@@ -87,6 +97,9 @@ function initializeMapInteractions() {
     tooltip.style.left = Math.max(8, Math.min(event.clientX - parent.left + 16, parent.width - tooltip.offsetWidth - 8)) + 'px';
     tooltip.style.top = Math.max(8, Math.min(event.clientY - parent.top + 16, parent.height - tooltip.offsetHeight - 8)) + 'px';
   }
+  function refreshTooltip() {
+    if (hoverPointer) showDriver(hoverPointer);
+  }
   zoomIn.addEventListener('click', () => changeZoom(zoom * 1.25));
   zoomOut.addEventListener('click', () => changeZoom(zoom / 1.25));
   reset.addEventListener('click', resetView);
@@ -101,7 +114,7 @@ function initializeMapInteractions() {
     drag = { id: event.pointerId, x: event.clientX, y: event.clientY, panX, panY };
     map.setPointerCapture(event.pointerId);
     map.classList.add('map-dragging');
-    tooltip.hidden = true;
+    clearHover();
     event.preventDefault();
   });
   map.addEventListener('pointermove', event => {
@@ -110,7 +123,10 @@ function initializeMapInteractions() {
       panX = drag.panX + event.clientX - drag.x;
       panY = drag.panY + event.clientY - drag.y;
       apply();
-    } else if (event.isPrimary !== false) showDriver(event);
+    } else if (event.isPrimary !== false) {
+      hoverPointer = { clientX: event.clientX, clientY: event.clientY };
+      showDriver(hoverPointer);
+    }
   });
   function endDrag(event) {
     if (!drag || event.pointerId !== drag.id) return;
@@ -120,7 +136,7 @@ function initializeMapInteractions() {
   map.addEventListener('pointerup', endDrag);
   map.addEventListener('pointercancel', endDrag);
   map.addEventListener('lostpointercapture', endDrag);
-  map.addEventListener('pointerleave', () => { tooltip.hidden = true; });
+  map.addEventListener('pointerleave', clearHover);
   // The original layout divider can change the map's size without a window resize.
   if (typeof ResizeObserver === 'function') {
     const observer = new ResizeObserver(apply);
@@ -128,6 +144,6 @@ function initializeMapInteractions() {
     observer.observe(wrap);
   }
   window.addEventListener('resize', apply);
-  mapInteractionController = { reset: resetView };
+  mapInteractionController = { reset: resetView, refresh: refreshTooltip };
   apply();
 }
