@@ -61,10 +61,13 @@ function parseTimeToSeconds(t) {
 }
 
 function formatSeconds(s) {
-  if (!isFinite(s)) return 'N/A';
-  const m = Math.floor(s / 60);
-  const rem = s % 60;
-  return `${m}:${rem < 10 ? '0' : ''}${rem.toFixed(3)}`;
+  if (!Number.isFinite(s) || s < 0) return 'N/A';
+  // Round before splitting so 59.9996 carries into the next minute.
+  const milliseconds = Math.round(s * 1000);
+  if (!Number.isFinite(milliseconds)) return 'N/A';
+  const minutes = Math.floor(milliseconds / 60000);
+  const remainder = milliseconds % 60000;
+  return `${minutes}:${(remainder / 1000).toFixed(3).padStart(6, '0')}`;
 }
 
 function formatTime(t) {
@@ -72,8 +75,7 @@ function formatTime(t) {
 }
 
 function formatGap(seconds) {
+  if (!Number.isFinite(seconds)) return 'N/A';
   if (seconds < 60) return seconds.toFixed(3) + 's';
-  const m = Math.floor(seconds / 60);
-  const s = (seconds % 60).toFixed(3).padStart(6, '0');
-  return `${m}:${s}`;
+  return formatSeconds(seconds);
 }
