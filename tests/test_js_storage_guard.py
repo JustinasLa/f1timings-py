@@ -36,7 +36,8 @@ def _run_node(script):
         for name in ("formatting-and-fetch-helpers.js", "udp-listener-controls.js")
     )
     result = subprocess.run(
-        [node, "-e", f"{BLOCKED_STORAGE}\n{sources}\n{script}"],
+        [node, "-"],
+        input=f"{BLOCKED_STORAGE}\n{sources}\n{script}",
         capture_output=True,
         text=True,
         timeout=30,
@@ -83,6 +84,6 @@ console.error = () => {{}};
 onLoad();
 console.log(JSON.stringify(calls));
 """
-    result = subprocess.run([node, "-e", program], capture_output=True, text=True, timeout=30)
+    result = subprocess.run([node, "-"], input=program, capture_output=True, text=True, timeout=30)
     assert result.returncode == 0, f"node script failed: {result.stderr}"
     assert "startDataFetching" in json.loads(result.stdout.strip())
