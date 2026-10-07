@@ -1,3 +1,5 @@
+const driverAliasDrafts = new Map();
+
 async function loadDriverAliases() {
   try {
     driverAliases = await fetchJsonWithTimeout("/api/telemetry/driver_aliases", 1500);
@@ -12,7 +14,15 @@ function updateDriverAliasPanel(liveDrivers) {
   if (!list) return;
   bindDriverAliasClicks(list);
 
-  if (list.querySelector(".driver-alias-input:focus")) return;
+  for (const input of list.querySelectorAll('.driver-alias-input')) {
+    if (input.value !== input.dataset.savedValue) {
+      driverAliasDrafts.set(normalizeAliasKey(input.dataset.telemetryName), input.value);
+    } else {
+      driverAliasDrafts.delete(normalizeAliasKey(input.dataset.telemetryName));
+    }
+  }
+  // Keep the focused row, including its Save button, stable during live polling.
+  if (list.contains(document.activeElement)) return;
 
   const drivers = Object.values(liveDrivers || {});
   const telemetryNames = [];
@@ -24,17 +34,23 @@ function updateDriverAliasPanel(liveDrivers) {
     seen.add(key);
     telemetryNames.push({
       telemetryName,
-      displayName: driverAliases[key] || driver.name || telemetryName,
+      displayName: driverAliasDrafts.has(key) ? driverAliasDrafts.get(key) :
+        driverAliases[key] || driver.name || telemetryName,
+      savedName: driverAliases[key] || driver.name || telemetryName,
       instanceIndex: driver.instance_index
     });
   }
 
   if (telemetryNames.length === 0) {
-    list.innerHTML = '<div class="driver-alias-empty">Waiting for live drivers...</div>';
+    const waiting = '<div class="driver-alias-empty">Waiting for live drivers...</div>';
+    if (list.dataset.aliasMarkup !== waiting) {
+      list.innerHTML = waiting;
+      list.dataset.aliasMarkup = waiting;
+    }
     return;
   }
 
-  list.innerHTML = telemetryNames.map((item) => {
+  const markup = telemetryNames.map((item) => {
     const instanceIndex = Number(item.instanceIndex);
     const colorIndex = Number.isInteger(instanceIndex) ? instanceIndex % INSTANCE_COLORS.length : 0;
     const color = INSTANCE_COLORS[colorIndex] || TEAM_COLORS.DEFAULT;
@@ -42,11 +58,15 @@ function updateDriverAliasPanel(liveDrivers) {
       <div class="driver-alias-row">
         <span class="driver-alias-dot" style="background:${color}"></span>
         <span class="driver-alias-raw">${escapeHtml(item.telemetryName)}</span>
-        <input class="driver-alias-input" data-telemetry-name="${escapeAttr(item.telemetryName)}" value="${escapeAttr(item.displayName)}" placeholder="Player name">
+        <input class="driver-alias-input" data-telemetry-name="${escapeAttr(item.telemetryName)}" data-saved-value="${escapeAttr(item.savedName)}" value="${escapeAttr(item.displayName)}" placeholder="Player name">
         <button class="driver-alias-save" data-telemetry-name="${escapeAttr(item.telemetryName)}">Save</button>
       </div>
     `;
   }).join('');
+  if (list.dataset.aliasMarkup !== markup) {
+    list.innerHTML = markup;
+    list.dataset.aliasMarkup = markup;
+  }
 }
 
 function bindDriverAliasClicks(list) {
@@ -66,13 +86,21 @@ async function saveDriverAlias(telemetryName) {
     .find((el) => el.dataset.telemetryName === telemetryName);
   if (!input) return;
 
-  const displayName = input.value.trim();
+  const draft = input.value;
+  const displayName = draft.trim();
+  const key = normalizeAliasKey(telemetryName);
+  driverAliasDrafts.set(key, draft);
   try {
     driverAliases = await fetchJsonWithTimeout("/api/telemetry/driver_alias", 1500, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ telemetry_name: telemetryName, display_name: displayName })
     });
+    if (input.value === draft) {
+      driverAliasDrafts.delete(key);
+      input.value = displayName || telemetryName;
+      input.dataset.savedValue = input.value;
+    }
     loadLiveDriverPositions();
 
     if (displayName) {

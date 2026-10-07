@@ -129,3 +129,73 @@ test('saveDriverAlias with an unknown name does nothing; panel binds clicks once
   assert.equal(env.window.normalizeAliasKey(undefined), '');
   assert.equal(env.window.normalizeAliasKey('  MiXed '), 'mixed');
 });
+
+test('polling preserves unchanged nodes, blurred drafts, cleared drafts and focused Save buttons', () => {
+  const env = createDashboard();
+  const w = env.window;
+  const drivers = { 0: { telemetry_name: 'Raw', name: 'Raw' } };
+  const list = env.document.getElementById('driverAliasList');
+  w.updateDriverAliasPanel(drivers);
+  const original = list.querySelector('.driver-alias-input');
+  w.updateDriverAliasPanel(drivers);
+  assert.equal(list.querySelector('.driver-alias-input'), original);
+  original.focus();
+  original.value = 'Unsaved draft';
+  original.blur();
+  w.updateDriverAliasPanel(drivers);
+  assert.equal(list.querySelector('input').value, 'Unsaved draft');
+  const draftInput = list.querySelector('input');
+  w.updateDriverAliasPanel(drivers);
+  assert.equal(list.querySelector('input'), draftInput, 'unchanged draft is stable');
+  draftInput.value = '';
+  w.updateDriverAliasPanel(drivers);
+  assert.equal(list.querySelector('input').value, '', 'empty draft is preserved');
+  list.querySelector('input').value = 'Raw';
+  w.updateDriverAliasPanel(drivers);
+  assert.equal(list.querySelector('input').value, 'Raw', 'reverting the draft clears it');
+  const button = list.querySelector('button');
+  button.focus();
+  w.updateDriverAliasPanel({ ...drivers, 1: { name: 'New arrival' } });
+  assert.equal(list.querySelector('button'), button);
+  assert.equal(env.document.activeElement, button);
+  button.blur();
+  w.updateDriverAliasPanel({ ...drivers, 1: { name: 'New arrival' } });
+  assert.equal(list.querySelectorAll('input').length, 2);
+});
+
+test('failed alias save retains the draft through polling and a successful retry releases it', async () => {
+  let failure = true;
+  const drivers = { 0: { telemetry_name: 'Raw', name: 'Raw' } };
+  const env = createDashboard({ fetch: url => url === '/api/telemetry/driver_alias' ?
+    jsonResponse({ raw: 'Saved player' }, failure ? 500 : 200) : jsonResponse(drivers) });
+  const w = env.window;
+  w.updateDriverAliasPanel(drivers);
+  env.document.querySelector('.driver-alias-input').value = 'Saved player';
+  await w.saveDriverAlias('Raw');
+  w.updateDriverAliasPanel(drivers);
+  assert.equal(env.document.querySelector('.driver-alias-input').value, 'Saved player');
+  failure = false;
+  await w.saveDriverAlias('Raw');
+  await env.flush();
+  env.set('driverAliases', { raw: 'Later server value' });
+  w.updateDriverAliasPanel(drivers);
+  assert.equal(env.document.querySelector('.driver-alias-input').value, 'Later server value');
+});
+
+test('typing during an alias save keeps the newer draft after the earlier save succeeds', async () => {
+  let complete;
+  const drivers = { 0: { name: 'Raw' } };
+  const env = createDashboard({ fetch: url => url === '/api/telemetry/driver_alias' ?
+    new Promise(resolve => { complete = resolve; }) : jsonResponse(drivers) });
+  const w = env.window;
+  w.updateDriverAliasPanel(drivers);
+  const input = env.document.querySelector('.driver-alias-input');
+  input.value = 'First draft';
+  const pending = w.saveDriverAlias('Raw');
+  await env.flush();
+  input.value = 'Newer draft';
+  complete(jsonResponse({ raw: 'First draft' }));
+  await pending;
+  await env.flush();
+  assert.equal(env.document.querySelector('.driver-alias-input').value, 'Newer draft');
+});
