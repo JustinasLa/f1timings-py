@@ -2,6 +2,8 @@
 // the map stays sharp on HiDPI screens.
 const TRACK_CANVAS_WIDTH = 1200;
 const TRACK_CANVAS_HEIGHT = 800;
+let trackMapRequestId = 0;
+let trackMapInFlight = null;
 
 async function loadCurrentTrack() {
   try {
@@ -128,21 +130,39 @@ function setTrackNameWithFlag(element, text, trackName) {
 }
 
 async function loadTrackVisualization(trackName) {
+  const track = trackName.toLowerCase();
+  if (trackMapInFlight && trackMapInFlight.track === track) return;
+  const requestId = ++trackMapRequestId;
+  const selectedTrack = currentTrack;
+  trackMapInFlight = { track, requestId };
+  trackData = null;
+  trackRendered = false;
+  const isCurrent = () => requestId === trackMapRequestId && currentTrack === selectedTrack;
   try {
-    const params = TRACK_DICTIONARY[trackName.toLowerCase()];
+    const params = TRACK_DICTIONARY[track];
     if (!params) { showTrackPlaceholder(`No map data for ${trackName}`); return; }
 
-    const r = await fetch(`/api/track/data?track=${encodeURIComponent(trackName.toLowerCase())}`);
+    const r = await fetch(`/api/track/data?track=${encodeURIComponent(track)}`);
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const newData = await r.json();
-    if (!newData.points || newData.points.length === 0) { showTrackPlaceholder('No track points available'); return; }
+    if (!isCurrent()) return;
+    if (!newData.points || newData.points.length === 0) {
+      showTrackPlaceholder('No track points available');
+      return;
+    }
 
     trackData = newData;
     if (typeof resetMapInteractions === 'function') resetMapInteractions();
     canvas.style.display = 'block';
     document.getElementById('trackPlaceholder').style.display = 'none';
     drawTrackOnCanvas(trackData, params);
-  } catch (e) { console.error('Error loading track:', e); showTrackPlaceholder('Track data unavailable'); }
+  } catch (e) {
+    if (!isCurrent()) return;
+    console.error('Error loading track:', e);
+    showTrackPlaceholder('Track data unavailable');
+  } finally {
+    if (trackMapInFlight?.requestId === requestId) trackMapInFlight = null;
+  }
 }
 
 function showTrackPlaceholder(msg) {

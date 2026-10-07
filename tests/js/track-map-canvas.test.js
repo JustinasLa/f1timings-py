@@ -488,3 +488,53 @@ test('traceTimeAt interpolates elapsed time by lap fraction', () => {
   assert.equal(env.window.traceTimeAt(LEADER_TRACE, 1), 3000);
   assert.equal(env.window.traceTimeAt([[10, 100], [30, 300]], 0), 0);
 });
+
+test('map loads ignore stale successes and failures and keep the newer request in flight', async () => {
+  const pending = {};
+  const env = withCanvas(createDashboard({ fetch: url => new Promise((resolve, reject) => {
+    pending[url.split('track=')[1]] = { resolve, reject };
+  }) }));
+  env.set('currentTrack', 'japan');
+  const japan = env.window.loadTrackVisualization('japan');
+  await env.flush();
+  await env.window.loadTrackVisualization('Japan');
+  assert.equal(env.fetchCalls.length, 1, 'deduplicates same-track requests');
+  env.set('currentTrack', 'bahrain');
+  const bahrain = env.window.loadTrackVisualization('bahrain');
+  await env.flush();
+  pending.japan.resolve(jsonResponse({ name: 'japan', points: SQUARE }));
+  await japan;
+  assert.equal(env.get('trackData'), null);
+  assert.equal(env.get('trackMapInFlight').track, 'bahrain');
+  pending.bahrain.resolve(jsonResponse({ name: 'bahrain', points: SQUARE }));
+  await bahrain;
+  assert.equal(env.get('trackData').name, 'bahrain');
+
+  env.set('currentTrack', 'japan');
+  const old = env.window.loadTrackVisualization('japan');
+  await env.flush();
+  env.set('currentTrack', 'monza');
+  const latest = env.window.loadTrackVisualization('monza');
+  await env.flush();
+  pending.monza.resolve(jsonResponse({ name: 'monza', points: SQUARE }));
+  await latest;
+  pending.japan.reject(new Error('old request failed'));
+  await old;
+  assert.equal(env.get('trackData').name, 'monza');
+  assert.equal(env.get('trackMapInFlight'), null);
+  assert.equal(env.logs.error.length, 0);
+  assert.equal(env.document.getElementById('trackPlaceholder').style.display, 'none');
+});
+
+test('a selection change invalidates a map response even before another load starts', async () => {
+  let resolve;
+  const env = withCanvas(createDashboard({ fetch: () => new Promise(r => { resolve = r; }) }));
+  env.set('currentTrack', 'japan');
+  const request = env.window.loadTrackVisualization('japan');
+  await env.flush();
+  env.set('currentTrack', 'monza');
+  resolve(jsonResponse({ points: SQUARE }));
+  await request;
+  assert.equal(env.get('trackData'), null);
+  assert.equal(env.get('trackMapInFlight'), null);
+});
