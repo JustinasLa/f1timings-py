@@ -57,7 +57,7 @@ test('initializeTelemetryControls restores the port, polls status and wires butt
   assert.equal(w.localStorage.getItem('udpTelemetryPort'), '30000');
   s.port.value = '80';
   s.port.dispatchEvent(new w.Event('change'));
-  assert.equal(w.localStorage.getItem('udpTelemetryPort'), '20777');
+  assert.equal(w.localStorage.getItem('udpTelemetryPort'), '30000', 'invalid edits do not replace the last valid port');
 });
 
 test('initializeTelemetryControls keeps the default port when none is saved', () => {
@@ -82,12 +82,44 @@ test('initializeTelemetryControls needs all three controls', () => {
 test('getUdpPort validates the port range', () => {
   const env = createDashboard();
   const port = ui(env).port;
-  for (const [value, expected] of [['1024', '1024'], ['65535', '65535'], ['1023', '20777'], ['65536', '20777'], ['abc', '20777']]) {
+  for (const [value, expected] of [['1024', '1024'], ['65535', '65535'], ['1023', null], ['65536', null], ['abc', null], ['', null], ['31337.5', null], ['2e4', '20000']]) {
     port.value = value;
     assert.equal(env.window.getUdpPort(), expected, value);
   }
   const noInput = createDashboard({ html: '<div></div>' });
-  assert.equal(noInput.window.getUdpPort(), '20777');
+  assert.equal(noInput.window.getUdpPort(), null);
+});
+
+test('invalid port edits disable Start, explain the error and never send a start request', async () => {
+  const env = createDashboard({ fetch: () => jsonResponse({ running: false }) });
+  const w = env.window;
+  w.initializeTelemetryControls();
+  await env.flush();
+  const port = ui(env).port;
+  for (const value of ['70000', '1023', '', '31337.5']) {
+    port.value = value;
+    port.dispatchEvent(new w.Event('input'));
+    assert.equal(ui(env).start.disabled, true);
+    assert.equal(port.getAttribute('aria-invalid'), 'true');
+    assert.equal(port.checkValidity(), false);
+    assert.match(ui(env).text, /Enter a port from 1024 to 65535/);
+    await w.startUdpTelemetry();
+  }
+  assert.equal(env.fetchCalls.some(call => call.url.startsWith('/api/telemetry/start')), false);
+  await w.refreshTelemetryStatus();
+  assert.equal(ui(env).start.disabled, true, 'status polling keeps invalid port disabled');
+  port.value = '2e4';
+  port.dispatchEvent(new w.Event('input'));
+  assert.equal(ui(env).start.disabled, false);
+  assert.equal(port.getAttribute('aria-invalid'), 'false');
+  assert.equal(port.checkValidity(), true);
+  assert.equal(ui(env).text, 'UDP Off');
+  assert.equal(w.getUdpPort(), '20000');
+  w.updateTelemetryControls({ running: false, error: 'Status unavailable' });
+  port.dispatchEvent(new w.Event('input'));
+  assert.equal(ui(env).text, 'Status unavailable', 'valid input does not hide a listener error');
+  const sparse = createDashboard({ html: '<div></div>' });
+  assert.doesNotThrow(() => sparse.window.updateTelemetryPortValidation());
 });
 
 test('start button starts the listener on the chosen port', async () => {
