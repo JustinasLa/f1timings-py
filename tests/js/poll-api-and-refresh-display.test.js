@@ -267,3 +267,15 @@ test('malformed records are skipped while good rows survive', async () => {
   await env.window.refreshDisplayData();
   assert.match(env.document.getElementById('timingTableBody').textContent, /No timing data/);
 });
+
+test('current records errors remain visible despite healthy live data and clear on recovery', async () => {
+  let failing = true;
+  const env = createDashboard({ fetch: url => jsonResponse({}, url.includes('/records') && failing ? 500 : 200) });
+  env.set('currentTrack', 'japan');
+  await env.window.loadDisplayData();
+  await env.window.loadLiveDriverPositions();
+  assert.equal(env.document.getElementById('connectionBanner').hidden, false);
+  failing = false;
+  await env.window.loadDisplayData();
+  assert.equal(env.document.getElementById('connectionBanner').hidden, true);
+});

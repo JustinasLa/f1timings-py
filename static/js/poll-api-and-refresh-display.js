@@ -4,6 +4,7 @@ let liveDriversInFlight = false;
 let lastRecordsFetchAt = 0;
 let lastLivePollOkAt = Date.now();
 let displayedRecordsTrack = null;
+let recordsFetchFailed = false;
 
 function startDataFetching() {
   if (fetchDataInterval) clearInterval(fetchDataInterval);
@@ -14,7 +15,7 @@ function startDataFetching() {
 
 function updateConnectionBanner() {
   const banner = document.getElementById("connectionBanner");
-  if (banner) banner.hidden = Date.now() - lastLivePollOkAt <= CONNECTION_STALE_MS;
+  if (banner) banner.hidden = !recordsFetchFailed && Date.now() - lastLivePollOkAt <= CONNECTION_STALE_MS;
 }
 
 function pollDisplayData() {
@@ -49,6 +50,7 @@ function ensureDisplayedTrack() {
     updateLeaderboard({});
     updateFastestLapPill({});
     updatePoleLapCard([]);
+    recordsFetchFailed = false;
   }
   displayedRecordsTrack = currentTrack;
 }
@@ -73,8 +75,14 @@ async function refreshDisplayData() {
     updateLeaderboard(drivers);
     updateFastestLapPill(drivers);
     updatePoleLapCard(records);
+    recordsFetchFailed = false;
+    updateConnectionBanner();
   } catch (e) {
-    if (requestedTrack === currentTrack) console.error("Error loading display data:", e);
+    if (requestedTrack === currentTrack) {
+      recordsFetchFailed = true;
+      updateConnectionBanner();
+      console.error("Error loading display data:", e);
+    }
   }
 }
 
@@ -91,6 +99,7 @@ async function loadLiveDriverPositions() {
   try {
     const liveDrivers = await fetchJsonWithTimeout("/api/drivers/live", 1500);
     lastLivePollOkAt = Date.now();
+    updateConnectionBanner();
     latestLiveDrivers = liveDrivers;
     if (typeof refreshMapDriverTooltip === 'function') refreshMapDriverTooltip();
     updateDriverAliasPanel(liveDrivers);
