@@ -192,6 +192,7 @@ body {
   display: grid;
   grid-template-columns: minmax(0, var(--left-width, 1fr)) 6px minmax(0, 1fr);
   flex: 1;
+  min-height: 0;
   overflow: hidden;
   gap: 0;
   transition: grid-template-columns 0.18s ease;
@@ -662,6 +663,7 @@ body.layout-resizing {
   flex-direction: column;
   background: var(--bg);
   overflow: hidden;
+  min-height: 0;
 }
 .track-header {
   padding: 10px 14px;
@@ -972,6 +974,10 @@ body.kiosk .timing-filter-bar { display: none; }
   border-top: 1px solid var(--border);
   padding: 8px 14px;
   flex-shrink: 0;
+  max-height: min(28%, 220px);
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 .driver-alias-title {
   font-size: 12px;
@@ -985,6 +991,9 @@ body.kiosk .timing-filter-bar { display: none; }
   display: flex;
   flex-direction: column;
   gap: 6px;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-width: thin;
 }
 .driver-alias-row {
   display: grid;
