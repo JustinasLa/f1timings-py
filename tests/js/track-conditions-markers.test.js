@@ -56,3 +56,43 @@ test('updateTrackConditions tolerates missing elements and fetch errors', async 
   assert.equal(failing.logs.error[0][0], 'Error loading track conditions:');
   assert.equal(failing.document.getElementById('mapConditions').style.display, 'none');
 });
+
+test('conditions never overlap even when a response exceeds the refresh gap', async () => {
+  let resolve;
+  const env = createDashboard({ fetch: () => new Promise(r => { resolve = r; }) });
+  const first = env.window.updateTrackConditions();
+  await env.flush();
+  env.clock.advance(1000);
+  await env.window.updateTrackConditions();
+  assert.equal(env.fetchCalls.length, 1);
+  resolve(jsonResponse({available:true,trackTemperature:40,airTemperature:20}));
+  await first;
+  assert.equal(env.get('conditionsInFlight'),false);
+  const second = env.window.updateTrackConditions();
+  await env.flush();
+  assert.equal(env.fetchCalls.length,2);
+  resolve(jsonResponse({},500));
+  await second;
+  assert.equal(env.get('conditionsInFlight'),false);
+  assert.equal(env.document.getElementById('mapConditions').style.display,'none');
+});
+
+test('old-track conditions responses and errors leave the new view alone', async () => {
+  let resolve;
+  const env = createDashboard({ fetch: () => new Promise(r => { resolve = r; }) });
+  env.set('currentTrack','japan');
+  const first = env.window.updateTrackConditions();
+  await env.flush();
+  env.set('currentTrack','monza');
+  resolve(jsonResponse({available:true,trackTemperature:40}));
+  await first;
+  assert.equal(env.document.getElementById('mapConditions').style.display,'none');
+  env.clock.advance(1000);
+  const second = env.window.updateTrackConditions();
+  await env.flush();
+  env.set('currentTrack','spain');
+  resolve(jsonResponse({},500));
+  await second;
+  assert.equal(env.logs.error.length,0);
+  assert.equal(env.get('conditionsInFlight'),false);
+});
