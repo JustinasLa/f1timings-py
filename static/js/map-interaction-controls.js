@@ -119,6 +119,11 @@ function initializeMapInteractions() {
   map.addEventListener('pointercancel', endDrag);
   map.addEventListener('lostpointercapture', endDrag);
   map.addEventListener('pointerleave', () => { tooltip.hidden = true; });
+  // The original layout divider can change the map's size without a window resize.
+  if (typeof ResizeObserver === 'function') {
+    new ResizeObserver(apply).observe(map);
+  }
+  window.addEventListener('resize', apply);
   mapInteractionController = { reset: resetView };
   apply();
 }

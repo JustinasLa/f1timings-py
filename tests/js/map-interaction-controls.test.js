@@ -3,12 +3,12 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { createDashboard, jsonResponse, SCRIPT_ORDER } = require('./harness.js');
 
-function interactions() {
+function interactions(beforeInitialize) {
   const env = createDashboard();
   const map = env.document.getElementById('trackCanvas');
   const wrap = map.parentElement;
   const tooltip = env.document.getElementById('mapDriverTooltip');
-  Object.defineProperties(map, { offsetWidth: { value: 600 }, offsetHeight: { value: 400 } });
+  Object.defineProperties(map, { offsetWidth: { configurable: true, value: 600 }, offsetHeight: { configurable: true, value: 400 } });
   Object.defineProperties(tooltip, { offsetWidth: { value: 180 }, offsetHeight: { value: 100 } });
   wrap.getBoundingClientRect = () => ({ left: 10, top: 20, width: 600, height: 400 });
   map.getBoundingClientRect = () => {
@@ -19,6 +19,7 @@ function interactions() {
   map.setPointerCapture = id => env.captures.push(id);
   env.map = map;
   env.tooltip = tooltip;
+  if (beforeInitialize) beforeInitialize(env);
   env.window.initializeMapInteractions();
   return env;
 }
@@ -141,6 +142,44 @@ test('cancelled and lost pointer capture gestures terminate; reset terminates an
   env.window.resetMapInteractions();
   assert.equal(env.map.classList.contains('map-dragging'), false);
   assert.deepEqual(transform(env.map), { x: 0, y: 0, zoom: 1 });
+});
+
+test('divider resize observation clamps panning to the new map size while preserving zoom', () => {
+  const env = interactions(before => {
+    before.observed = [];
+    before.window.ResizeObserver = class {
+      constructor(callback) { before.resizeMap = callback; }
+      observe(target) { before.observed.push(target); }
+    };
+  });
+  assert.deepEqual(env.observed, [env.map]);
+  button(env, 'mapZoomIn').click();
+  pointer(env, 'pointerdown');
+  pointer(env, 'pointermove', { clientX: 1000, clientY: 1000 });
+  pointer(env, 'pointerup');
+  assert.deepEqual(transform(env.map), { x: 75, y: 50, zoom: 1.25 });
+  Object.defineProperties(env.map, { offsetWidth: { value: 300 }, offsetHeight: { value: 200 } });
+  env.tooltip.hidden = false;
+  env.resizeMap();
+  assert.deepEqual(transform(env.map), { x: 37.5, y: 25, zoom: 1.25 });
+  assert.equal(env.tooltip.hidden, true);
+  assert.equal(button(env, 'mapZoomReset').textContent, '125%');
+  Object.defineProperties(env.map, { offsetWidth: { value: 160 }, offsetHeight: { value: 80 } });
+  env.window.dispatchEvent(new env.window.Event('resize'));
+  assert.deepEqual(transform(env.map), { x: 20, y: 10, zoom: 1.25 });
+});
+
+test('window resize clamps map pan when ResizeObserver is unavailable', () => {
+  const env = interactions();
+  assert.equal(typeof env.window.ResizeObserver, 'undefined');
+  button(env, 'mapZoomIn').click();
+  pointer(env, 'pointerdown');
+  pointer(env, 'pointermove', { clientX: -1000, clientY: -1000 });
+  pointer(env, 'pointerup');
+  Object.defineProperties(env.map, { offsetWidth: { value: 200 }, offsetHeight: { value: 160 } });
+  env.window.dispatchEvent(new env.window.Event('resize'));
+  assert.deepEqual(transform(env.map), { x: -25, y: -20, zoom: 1.25 });
+  assert.equal(button(env, 'mapZoomOut').disabled, false);
 });
 
 test('hover handles missing map data, transform, track, dimensions or nearby live positions', () => {
