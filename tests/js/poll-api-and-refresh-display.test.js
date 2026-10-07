@@ -252,3 +252,18 @@ test('track changes clear old timing and reject old record successes and errors'
   await failedOld;
   assert.equal(env.logs.error.length, 0);
 });
+
+test('malformed records are skipped while good rows survive', async () => {
+  let payload = { lap_times: [null, false, [], {}, {time: null}, {time: 'bad'}, {time:'0'},
+    {time: '1:NaN'}, {time:'1:30',driver:5}, {time:'9'.repeat(400)},
+    {time:'1:30.000',driver:'Good'}, {time:'1:31.000'}, {time:'1:32.000',driver:'Other'},
+    {time:93,driver:'Numeric'}, {time:' 1:34.000 ',driver:'Trimmed'}] };
+  const env = createDashboard({ fetch: () => jsonResponse(payload) });
+  env.set('currentTrack', 'japan');
+  await env.window.refreshDisplayData();
+  assert.equal(env.document.querySelectorAll('#timingTableBody tr.clickable-row').length, 5);
+  assert.match(env.document.getElementById('timingTableBody').textContent, /Good/);
+  payload = null;
+  await env.window.refreshDisplayData();
+  assert.match(env.document.getElementById('timingTableBody').textContent, /No timing data/);
+});
