@@ -26,10 +26,10 @@ function matchesLeaderboardFilters(driver, lap) {
     (String(driver.name) + ' ' + String(driver.team)).toLowerCase().includes(leaderboardSearchQuery);
 }
 
-let leaderboardPersonalBestSectors = {};
+let leaderboardPersonalBestSectors = Object.create(null);
 let leaderboardOverallBestSectors = { s1: 0, s2: 0, s3: 0 };
 
-let leaderboardLiveLapSectors = {};
+let leaderboardLiveLapSectors = Object.create(null);
 
 const EVENT_DATE_STORAGE_KEY = 'leaderboardEventDate';
 let eventDateFilter = '';
@@ -213,9 +213,8 @@ function buildOneSectorBox(valueMs, personalBestMs, overallBestMs, isValid) {
 }
 
 function buildLeaderboardLiveLapSectors() {
-  const liveLapSectors = {};
-  for (const driverKey in latestLiveDrivers) {
-    const liveDriver = latestLiveDrivers[driverKey];
+  const liveLapSectors = Object.create(null);
+  for (const liveDriver of Object.values(latestLiveDrivers)) {
     if (!liveDriver || liveDriver.live_lap_active !== true) {
       continue;
     }
@@ -230,14 +229,9 @@ function buildLeaderboardLiveLapSectors() {
 }
 
 function addLiveOnlyDrivers(drivers) {
-  const mergedDrivers = {};
+  const mergedDrivers = Object.assign(Object.create(null), drivers);
 
-  for (const driverName in drivers) {
-    mergedDrivers[driverName] = drivers[driverName];
-  }
-
-  for (const driverKey in latestLiveDrivers) {
-    const liveDriver = latestLiveDrivers[driverKey];
+  for (const liveDriver of Object.values(latestLiveDrivers)) {
     if (!liveDriver || liveDriver.live_lap_active !== true) {
       continue;
     }
@@ -319,7 +313,7 @@ function buildSectorBoxesHtml(driver, lap) {
 }
 
 function recomputeBestSectors(rows) {
-  leaderboardPersonalBestSectors = {};
+  leaderboardPersonalBestSectors = Object.create(null);
   leaderboardOverallBestSectors = { s1: 0, s2: 0, s3: 0 };
 
   for (let i = 0; i < rows.length; i++) {
@@ -352,7 +346,7 @@ function getDriverDotColor(driver) {
 }
 
 function buildDriversFromRecords(records) {
-  const drivers = {};
+  const drivers = Object.create(null);
 
   for (const record of records) {
     if (record.is_pole_reference === true) {
@@ -759,7 +753,7 @@ function updatePoleLapCard(records) {
   document.getElementById('poleLapTime').textContent = formatTime(pole.time);
 
   const dot = document.getElementById('poleLapDot');
-  dot.style.background = TEAM_COLORS[pole.team] || TEAM_COLORS['DEFAULT'];
+  dot.style.background = getDriverDotColor(pole);
 
   const metaParts = [];
   if (pole.team) {

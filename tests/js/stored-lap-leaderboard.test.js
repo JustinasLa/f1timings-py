@@ -732,3 +732,26 @@ test('event date filter is a no-op without the select element', () => {
   const env = createDashboard({ html: '<div></div>' });
   assert.doesNotThrow(() => env.window.initializeEventDateFilter());
 });
+
+test('prototype names remain ordinary saved and live drivers with isolated sector dictionaries', () => {
+  const env = createDashboard();
+  const w = env.window;
+  const names = ['__proto__', 'constructor', 'toString', 'hasOwnProperty'];
+  const drivers = w.buildDriversFromRecords(names.map((name, index) => rec(name, `1:2${index}.000`, {
+    sector_1_ms: 1000 + index, sector_2_ms: 2000, sector_3_ms: 3000
+  })));
+  assert.equal(Object.getPrototypeOf(drivers), null);
+  env.set('latestLiveDrivers', Object.fromEntries(names.map((name, index) => [index, {
+    name, live_lap_active: true, live_sector_1_ms: 900 + index
+  }])));
+  w.updateLeaderboard(drivers);
+  assert.deepEqual(rows(env.document).map(row => row.dataset.driver), names);
+  assert.equal(Object.getPrototypeOf(env.get('leaderboardPersonalBestSectors')), null);
+  assert.equal(Object.getPrototypeOf(env.get('leaderboardLiveLapSectors')), null);
+  assert.equal(env.get('leaderboardPersonalBestSectors').__proto__.s1, 1000);
+  assert.equal(w.addLiveOnlyDrivers({}).__proto__.name, '__proto__');
+  assert.equal(w.buildLeaderboardLiveLapSectors().__proto__.s1, 900);
+  assert.equal(env.run('Object.prototype.lap_count'), undefined);
+  const inherited = Object.create({ Ghost: drivers.constructor });
+  assert.deepEqual(Object.keys(w.addLiveOnlyDrivers(inherited)).sort(), names.slice().sort());
+});
