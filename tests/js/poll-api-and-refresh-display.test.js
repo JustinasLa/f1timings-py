@@ -175,7 +175,7 @@ test('loadLiveDriverPositions draws drivers, updates aliases and guards re-entry
   const p2 = w.loadLiveDriverPositions();
   await Promise.all([p1, p2]);
   assert.equal(env.fetchCalls.length, 1, 'second call skipped while in flight');
-  assert.equal(env.get('latestLiveDrivers'), live);
+  assert.deepEqual(JSON.parse(JSON.stringify(env.get('latestLiveDrivers'))), live);
   assert.equal(env.document.querySelector('.driver-alias-raw').textContent, 'Ann Lee');
   assert.deepEqual(env.ctx2d.calls.filter((c) => c.name === 'fillText').map((c) => c.args[0]), ['AL']);
   assert.equal(env.get('liveDriversInFlight'), false);
@@ -205,7 +205,7 @@ test('loadLiveDriverPositions without track data draws nothing', async () => {
   respond = () => { throw new Error('down'); };
   await env.window.loadLiveDriverPositions();
   assert.equal(env.ctx2d.calls.length, 0);
-  assert.equal(env.get('latestLiveDrivers')[0].name, 'Ann');
+  assert.equal(Object.keys(env.get('latestLiveDrivers')).length, 0);
 });
 
 
@@ -295,4 +295,69 @@ test('live timing refreshes when sectors change without rebuilding rows for map-
   await env.window.loadLiveDriverPositions();
   assert.match(env.document.querySelector('#timingTableBody tr').textContent, /31\.000/);
   assert.notEqual(env.document.querySelector('#timingTableBody tr'), firstRow);
+});
+
+test('stale live responses and failures do not repaint the current track', async () => {
+  const gate = deferred();
+  const env = createDashboard({ fetch: () => gate.promise });
+  withTrack(env);
+  const old = env.window.loadLiveDriverPositions();
+  await env.flush();
+  env.set('currentTrack','monza');
+  gate.resolve(jsonResponse({0:{name:'old',world_x:1,world_z:1}}));
+  await old;
+  assert.equal(Object.keys(env.get('latestLiveDrivers')).length, 0);
+  assert.equal(env.ctx2d.calls.length, 0);
+  const second = deferred();
+  env.window.fetch = () => second.promise;
+  const failed = env.window.loadLiveDriverPositions();
+  env.set('currentTrack','japan');
+  second.resolve(jsonResponse({},500));
+  await failed;
+  assert.equal(env.ctx2d.calls.length, 0);
+});
+
+test('malformed live entries and missing tooltip helpers are safe', async () => {
+  let payload = null;
+  const env = createDashboard({ fetch: () => jsonResponse(payload) });
+  const w = env.window;
+  for (payload of [null, 42, []]) {
+    await w.loadLiveDriverPositions();
+    assert.equal(env.get('liveDriversInFlight'), false);
+    assert.equal(Object.keys(env.get('latestLiveDrivers')).length, 0);
+  }
+  payload = { 0:null,1:{name:'Ann'},2:[],3:42 };
+  const refresh = w.refreshMapDriverTooltip;
+  w.refreshMapDriverTooltip = undefined;
+  await w.loadLiveDriverPositions();
+  w.refreshMapDriverTooltip = refresh;
+  w.refreshMapDriverTooltip = undefined;
+  env.set('displayedRecordsTrack','japan');
+  env.set('currentTrack','monza');
+  await w.refreshDisplayData();
+});
+
+test('live failure clears expired dots, live-only timing and tooltip, then recovers', async () => {
+  let fail = false;
+  const live = {0:{name:'Live only',live_lap_active:true,world_x:10,world_z:10}};
+  const env = createDashboard({ fetch: () => jsonResponse(live, fail ? 503 : 200) });
+  withTrack(env);
+  const w = env.window;
+  let tooltipRefreshes = 0;
+  w.refreshMapDriverTooltip = () => { tooltipRefreshes++; };
+  w.updateLeaderboard(w.buildDriversFromRecords([{driver:'Stored',time:'1:30.000'}]));
+  await w.loadLiveDriverPositions();
+  assert.match(env.document.getElementById('timingTableBody').textContent,/Live only/);
+  fail = true;
+  env.ctx2d.calls.length = 0;
+  await w.loadLiveDriverPositions();
+  assert.equal(Object.keys(env.get('latestLiveDrivers')).length,0);
+  assert.doesNotMatch(env.document.getElementById('timingTableBody').textContent,/Live only/);
+  assert.match(env.document.getElementById('timingTableBody').textContent,/Stored/);
+  assert.equal(env.ctx2d.calls.filter(c=>c.name==='arc').length,0);
+  assert.equal(tooltipRefreshes,2);
+  fail = false;
+  await w.loadLiveDriverPositions();
+  assert.match(env.document.getElementById('timingTableBody').textContent,/Live only/);
+  assert.equal(tooltipRefreshes,3);
 });
