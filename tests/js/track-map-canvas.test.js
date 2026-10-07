@@ -654,3 +654,20 @@ test('trace errors and mismatched traces recover after backoff without duplicate
   for (const driver of drivers) assert.deepEqual(plain(env.window.getLapTrace(driver)), DRIVER_TRACE);
   assert.equal(env.fetchCalls.length, count, 'successful traces stay cached');
 });
+
+test('filtered expanded drivers do not fetch or retain a trace comparison', async () => {
+  const env = createDashboard({ fetch: url => jsonResponse({
+    time: url.endsWith('Max') ? '1:20.000' : '1:21.000', samples: DRIVER_TRACE
+  }) });
+  env.set('currentTrack', 'monza');
+  env.set('latestLeaderboardDrivers', traceDrivers());
+  env.run("expandedDrivers.add('Lewis'); leaderboardSearchQuery = 'max'");
+  assert.equal(env.window.findTraceComparison(), null);
+  assert.equal(env.fetchCalls.length, 0);
+  env.set('leaderboardSearchQuery', 'lewis');
+  env.window.findTraceComparison();
+  await env.flush();
+  assert.equal(env.window.findTraceComparison().driver.name, 'Lewis');
+  env.set('leaderboardSearchQuery', 'max');
+  assert.equal(env.window.findTraceComparison(), null);
+});

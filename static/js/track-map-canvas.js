@@ -381,7 +381,7 @@ function findTraceComparison() {
   if (!leader) return null;
   const driver = [...expandedDrivers].reverse()
     .map((name) => latestLeaderboardDrivers[name])
-    .find((d) => d && d !== leader && d.lap_times[0].is_valid);
+    .find((d) => d && d !== leader && d.lap_times[0].is_valid && matchesLeaderboardFilters(d, d.lap_times[0]));
   if (!driver) return null;
   const driverTrace = getLapTrace(driver);
   const leaderTrace = getLapTrace(leader);
