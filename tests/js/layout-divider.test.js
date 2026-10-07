@@ -134,3 +134,55 @@ test('narrow layouts never receive a negative width or exceed available space', 
     assert.equal(parseFloat(leftWidth(layout)), applied);
   }
 });
+
+test('cancel, blur and lost capture finish dragging and stop subsequent moves', () => {
+  const env = createDashboard();
+  const layout = withGeometry(env);
+  const doc = env.document;
+  const w = env.window;
+  w.initializeLayoutDivider();
+  const divider = doc.getElementById('layoutDivider');
+  for (const [target, type] of [[doc, 'pointercancel'], [w, 'blur'], [divider, 'lostpointercapture']]) {
+    divider.dispatchEvent(new w.MouseEvent('pointerdown', { clientX: 450, bubbles: true }));
+    target.dispatchEvent(new w.Event(type));
+    doc.dispatchEvent(new w.MouseEvent('pointermove', { clientX: 700 }));
+    assert.equal(leftWidth(layout), '400px');
+    assert.equal(env.get('isDraggingDivider'), false);
+    assert.ok(!doc.body.classList.contains('layout-resizing'));
+  }
+  divider.dispatchEvent(new w.MouseEvent('pointerdown', { button: 2, clientX: 800, bubbles: true }));
+  assert.equal(leftWidth(layout), '400px', 'secondary button does not resize');
+});
+
+test('pointer capture follows only the active pointer and releases on completion', () => {
+  const env = createDashboard();
+  const layout = withGeometry(env);
+  const divider = env.document.getElementById('layoutDivider');
+  const w = env.window;
+  let captured = null;
+  divider.setPointerCapture = id => { captured = id; };
+  divider.hasPointerCapture = id => captured === id;
+  divider.releasePointerCapture = () => { captured = null; };
+  w.onDividerPointerDown({ button: 0, pointerId: 7, clientX: 450, preventDefault() {} });
+  assert.equal(captured, 7);
+  w.onDividerPointerDown({ pointerId: 8, clientX: 800, preventDefault() {} });
+  w.onDividerPointerUp({ pointerId: 8 });
+  assert.equal(captured, 7, 'another pointer cannot replace or finish the drag');
+  w.onDividerPointerMove({ pointerId: 8, clientX: 800 });
+  assert.equal(leftWidth(layout), '400px');
+  w.onDividerPointerMove({ pointerId: 7, clientX: 500 });
+  assert.equal(leftWidth(layout), '450px');
+  w.onDividerPointerUp({ pointerId: 7 });
+  assert.equal(captured, null);
+
+  // A browser can notify us after it has already released capture.
+  w.onDividerPointerDown({ pointerId: 7, clientX: 450, preventDefault() {} });
+  captured = null;
+  w.onDividerPointerUp({ type: 'blur' });
+  assert.equal(env.get('dividerPointerId'), null);
+  w.onDividerPointerDown({ pointerId: 7, clientX: 450, preventDefault() {} });
+  delete divider.hasPointerCapture;
+  w.onDividerPointerUp();
+  w.onDividerPointerDown({ clientX: 450, preventDefault() {} });
+  w.onDividerPointerUp();
+});

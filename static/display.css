@@ -211,6 +211,7 @@ body.layout-resizing .main-layout {
   background: var(--border);
   cursor: col-resize;
   position: relative;
+  touch-action: none;
 }
 .layout-divider::after {
   content: "";

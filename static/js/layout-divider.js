@@ -3,6 +3,7 @@ const LAYOUT_MIN_RIGHT_PX = 320;
 const LAYOUT_DIVIDER_PX = 6;
 
 let isDraggingDivider = false;
+let dividerPointerId = null;
 
 function layoutWidthLimits(totalWidth) {
   const availableWidth = Math.max(0, totalWidth - LAYOUT_DIVIDER_PX);
@@ -61,28 +62,40 @@ function onDividerPointerMove(event) {
   if (!isDraggingDivider) {
     return;
   }
+  if (dividerPointerId !== null && event.pointerId !== dividerPointerId) return;
   resizeFromPointer(event.clientX);
 }
 
-function onDividerPointerUp() {
+function onDividerPointerUp(event) {
   if (!isDraggingDivider) {
     return;
   }
+  if (dividerPointerId !== null && event && event.pointerId !== undefined && event.pointerId !== dividerPointerId) return;
   isDraggingDivider = false;
 
   const divider = document.getElementById("layoutDivider");
   if (divider) {
     divider.classList.remove("dragging");
+    if (dividerPointerId !== null && divider.hasPointerCapture && divider.hasPointerCapture(dividerPointerId)) {
+      divider.releasePointerCapture(dividerPointerId);
+    }
   }
+  dividerPointerId = null;
   document.body.classList.remove("layout-resizing");
 }
 
 function onDividerPointerDown(event) {
+  if (event.button !== undefined && event.button !== 0) return;
+  if (isDraggingDivider) return;
   isDraggingDivider = true;
 
   const divider = document.getElementById("layoutDivider");
   if (divider) {
     divider.classList.add("dragging");
+    if (divider.setPointerCapture && event.pointerId !== undefined) {
+      dividerPointerId = event.pointerId;
+      divider.setPointerCapture(event.pointerId);
+    }
   }
   document.body.classList.add("layout-resizing");
 
@@ -99,6 +112,9 @@ function initializeLayoutDivider() {
   divider.addEventListener("pointerdown", onDividerPointerDown);
   document.addEventListener("pointermove", onDividerPointerMove);
   document.addEventListener("pointerup", onDividerPointerUp);
+  document.addEventListener("pointercancel", onDividerPointerUp);
+  divider.addEventListener('lostpointercapture', onDividerPointerUp);
+  window.addEventListener("blur", onDividerPointerUp);
 
   window.addEventListener("resize", function () {
     const layout = document.querySelector(".main-layout");
