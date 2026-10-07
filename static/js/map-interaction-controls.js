@@ -18,8 +18,9 @@ function initializeMapInteractions() {
   let drag = null;
 
   function apply() {
-    const limitX = (zoom - 1) * map.offsetWidth / 2;
-    const limitY = (zoom - 1) * map.offsetHeight / 2;
+    const viewport = wrap.getBoundingClientRect();
+    const limitX = Math.max(0, (zoom * map.offsetWidth - viewport.width) / 2);
+    const limitY = Math.max(0, (zoom * map.offsetHeight - viewport.height) / 2);
     panX = Math.max(-limitX, Math.min(limitX, panX));
     panY = Math.max(-limitY, Math.min(limitY, panY));
     map.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
@@ -122,7 +123,9 @@ function initializeMapInteractions() {
   map.addEventListener('pointerleave', () => { tooltip.hidden = true; });
   // The original layout divider can change the map's size without a window resize.
   if (typeof ResizeObserver === 'function') {
-    new ResizeObserver(apply).observe(map);
+    const observer = new ResizeObserver(apply);
+    observer.observe(map);
+    observer.observe(wrap);
   }
   window.addEventListener('resize', apply);
   mapInteractionController = { reset: resetView };
