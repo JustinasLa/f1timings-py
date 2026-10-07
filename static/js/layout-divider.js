@@ -11,6 +11,14 @@ function layoutWidthLimits(totalWidth) {
   return { minimum, maximum: Math.max(minimum, availableWidth - LAYOUT_MIN_RIGHT_PX) };
 }
 
+function updateDividerAccessibility(width, limits) {
+  const divider = document.getElementById('layoutDivider');
+  if (!divider) return;
+  divider.setAttribute('aria-valuemin', Math.round(limits.minimum));
+  divider.setAttribute('aria-valuemax', Math.round(limits.maximum));
+  divider.setAttribute('aria-valuenow', Math.round(width));
+  divider.setAttribute('aria-valuetext', 'Timing panel ' + Math.round(width) + ' pixels wide');
+}
 
 function applyLayoutLeftWidth(widthPx) {
   const layout = document.querySelector(".main-layout");
@@ -30,6 +38,7 @@ function applyLayoutLeftWidth(widthPx) {
   }
 
   layout.style.setProperty("--left-width", clampedWidth + "px");
+  updateDividerAccessibility(clampedWidth, limits);
   return clampedWidth;
 }
 
@@ -103,6 +112,22 @@ function onDividerPointerDown(event) {
   event.preventDefault();
 }
 
+function onDividerKeyDown(event) {
+  const layout = document.querySelector('.main-layout');
+  if (!layout) return;
+  const limits = layoutWidthLimits(layout.clientWidth);
+  const currentWidth = document.querySelector('.timing-area').getBoundingClientRect().width;
+  const step = event.shiftKey ? 50 : 10;
+  let width;
+  if (event.key === 'ArrowLeft') width = currentWidth - step;
+  else if (event.key === 'ArrowRight') width = currentWidth + step;
+  else if (event.key === 'Home') width = limits.minimum;
+  else if (event.key === 'End') width = limits.maximum;
+  else return;
+  applyLayoutLeftWidth(width);
+  event.preventDefault();
+}
+
 function initializeLayoutDivider() {
   const divider = document.getElementById("layoutDivider");
   if (!divider) {
@@ -115,6 +140,11 @@ function initializeLayoutDivider() {
   document.addEventListener("pointercancel", onDividerPointerUp);
   divider.addEventListener('lostpointercapture', onDividerPointerUp);
   window.addEventListener("blur", onDividerPointerUp);
+  divider.addEventListener('keydown', onDividerKeyDown);
+  const layout = document.querySelector('.main-layout');
+  if (layout) {
+    updateDividerAccessibility(document.querySelector('.timing-area').getBoundingClientRect().width, layoutWidthLimits(layout.clientWidth));
+  }
 
   window.addEventListener("resize", function () {
     const layout = document.querySelector(".main-layout");
@@ -125,6 +155,8 @@ function initializeLayoutDivider() {
     const widthPx = parseInt(currentWidth, 10);
     if (!isNaN(widthPx)) {
       applyLayoutLeftWidth(widthPx);
+    } else {
+      updateDividerAccessibility(document.querySelector('.timing-area').getBoundingClientRect().width, layoutWidthLimits(layout.clientWidth));
     }
   });
 }
