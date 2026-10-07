@@ -122,3 +122,20 @@ test('missing table or menu elements are tolerated', () => {
   assert.equal(noMenu.document.getElementById('columnSettingsToggle').onclick, null);
   assert.ok(noMenu.document.querySelector('.timing-table').classList.contains('hide-col-potential'));
 });
+
+test('Escape closes column settings and restores focus to its toggle', () => {
+  const env = createDashboard();
+  env.window.initializeColumnSettings();
+  const toggle = env.document.getElementById('columnSettingsToggle');
+  const menu = env.document.getElementById('columnSettingsMenu');
+  const key = name => env.document.dispatchEvent(new env.window.KeyboardEvent('keydown', { key: name }));
+  key('Escape');
+  toggle.click();
+  menu.querySelector('input').focus();
+  key('Enter');
+  assert.ok(menu.classList.contains('open'));
+  key('Escape');
+  assert.ok(!menu.classList.contains('open'));
+  assert.equal(toggle.getAttribute('aria-expanded'), 'false');
+  assert.equal(env.document.activeElement, toggle);
+});
