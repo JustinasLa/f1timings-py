@@ -199,3 +199,16 @@ test('typing during an alias save keeps the newer draft after the earlier save s
   await env.flush();
   assert.equal(env.document.querySelector('.driver-alias-input').value, 'Newer draft');
 });
+
+test('alias lookups ignore prototype properties and support an own __proto__ alias safely', () => {
+  const env = createDashboard();
+  const drivers = { 0: { name: '__proto__' }, 1: { name: 'constructor' }, 2: { name: 'bad alias' } };
+  env.set('driverAliases', { 'bad alias': 42 });
+  env.window.updateDriverAliasPanel(drivers);
+  assert.deepEqual(aliasRows(env).map(row => row.value), ['__proto__', 'constructor', 'bad alias']);
+  env.set('driverAliases', JSON.parse('{"__proto__":"Safe player"}'));
+  env.window.updateDriverAliasPanel(drivers);
+  assert.deepEqual(aliasRows(env).map(row => row.value), ['Safe player', 'constructor', 'bad alias']);
+  assert.equal({}.polluted, undefined);
+});
+
