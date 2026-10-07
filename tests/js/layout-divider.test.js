@@ -123,3 +123,14 @@ test('initializeLayoutDivider without a divider registers nothing', () => {
   env.window.dispatchEvent(new env.window.Event('resize'));
   assert.equal(leftWidth(layout), '600px', 'no resize handler installed');
 });
+
+test('narrow layouts never receive a negative width or exceed available space', () => {
+  for (const width of [526, 300, 6, 0]) {
+    const env = createDashboard();
+    const layout = withGeometry(env, { width });
+    const applied = env.window.applyLayoutLeftWidth(1000);
+    assert.ok(applied >= 0);
+    assert.ok(applied <= Math.max(0, width - 6));
+    assert.equal(parseFloat(leftWidth(layout)), applied);
+  }
+});

@@ -4,6 +4,13 @@ const LAYOUT_DIVIDER_PX = 6;
 
 let isDraggingDivider = false;
 
+function layoutWidthLimits(totalWidth) {
+  const availableWidth = Math.max(0, totalWidth - LAYOUT_DIVIDER_PX);
+  const minimum = Math.min(LAYOUT_MIN_LEFT_PX, availableWidth * LAYOUT_MIN_LEFT_PX / (LAYOUT_MIN_LEFT_PX + LAYOUT_MIN_RIGHT_PX));
+  return { minimum, maximum: Math.max(minimum, availableWidth - LAYOUT_MIN_RIGHT_PX) };
+}
+
+
 function applyLayoutLeftWidth(widthPx) {
   const layout = document.querySelector(".main-layout");
   if (!layout) {
@@ -11,14 +18,14 @@ function applyLayoutLeftWidth(widthPx) {
   }
 
   const totalWidth = layout.clientWidth;
-  const maxLeft = totalWidth - LAYOUT_DIVIDER_PX - LAYOUT_MIN_RIGHT_PX;
+  const limits = layoutWidthLimits(totalWidth);
 
   let clampedWidth = widthPx;
-  if (clampedWidth < LAYOUT_MIN_LEFT_PX) {
-    clampedWidth = LAYOUT_MIN_LEFT_PX;
+  if (clampedWidth < limits.minimum) {
+    clampedWidth = limits.minimum;
   }
-  if (clampedWidth > maxLeft) {
-    clampedWidth = maxLeft;
+  if (clampedWidth > limits.maximum) {
+    clampedWidth = limits.maximum;
   }
 
   layout.style.setProperty("--left-width", clampedWidth + "px");
