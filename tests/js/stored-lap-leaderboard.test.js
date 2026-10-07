@@ -495,14 +495,14 @@ test('clicking a row expands it with recent lap details; clicking again collapse
   assert.equal(details.length, 3);
   assert.ok(details[0].classList.contains('detail-light'));
   assert.ok(details[1].classList.contains('detail-dark'));
-  assert.equal(details[0].querySelector('.lap-detail-when').textContent, 'yesterday');
+  assert.equal(details[0].querySelector('.lap-detail-when > span').textContent, 'yesterday');
   assert.ok(details[0].querySelector('.laptime-badge').classList.contains('invalid'));
   assert.equal(details[0].querySelector('.col-gap').textContent, '—');
   assert.equal(details[0].querySelector('.lap-delete-btn').dataset.recordedAt, 'yesterday');
-  assert.equal(details[1].querySelector('.lap-detail-when').textContent, '10:02:00');
+  assert.equal(details[1].querySelector('.lap-detail-when > span').textContent, '10:02:00');
   assert.equal(details[1].querySelector('.col-gap').textContent, '+1.000s');
   assert.equal(details[1].querySelector('.col-topspeed').textContent, '300 km/h');
-  assert.equal(details[2].querySelector('.lap-detail-when').textContent, '10:00:00');
+  assert.equal(details[2].querySelector('.lap-detail-when > span').textContent, '10:00:00');
   assert.equal(details[2].querySelector('.col-gap').textContent, '—', 'fastest lap has no gap');
   assert.equal(rows(env.document)[0].querySelector('.expand-toggle').textContent, '−');
 
@@ -872,4 +872,21 @@ test('PB chart spans all ten leaderboard columns', () => {
   w.updateLeaderboard(w.buildDriversFromRecords([rec('Ann', '1:23.000'), rec('Ann', '1:24.000')]));
   w.toggleDriverExpand('Ann');
   assert.equal(env.document.querySelector('.pb-chart-row td').colSpan, 10);
+});
+
+test('hiding the position column keeps lap deletion in the visible name cell', () => {
+  const env = createDashboard();
+  const w = env.window;
+  w.updateLeaderboard(w.buildDriversFromRecords([rec('Ann', '1:23.000'), rec('Ann', '1:24.000')]));
+  w.toggleDriverExpand('Ann');
+  env.get('columnVisibility').pos = false;
+  w.applyColumnSettings();
+  assert.equal(env.document.querySelector('.timing-table').classList.contains('hide-col-pos'), true);
+  const buttons = Array.from(env.document.querySelectorAll('.lap-delete-btn'));
+  assert.equal(buttons.length, 2);
+  for (const button of buttons) {
+    assert.equal(button.closest('td').className, 'lap-detail-when');
+    assert.equal(button.closest('.col-pos'), null);
+    assert.equal(button.closest('tr').cells.length, 10);
+  }
 });
