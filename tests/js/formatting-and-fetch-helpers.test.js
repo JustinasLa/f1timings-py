@@ -130,3 +130,19 @@ test('formatSeconds, formatTime and formatGap', () => {
   assert.equal(w.formatGap(65.25), '1:05.250');
   assert.equal(w.formatGap(125), '2:05.000');
 });
+
+test('formatSeconds rounds milliseconds before minute and padding boundaries', () => {
+  const { window: w } = createDashboard();
+  for (const [seconds, expected] of [[0, '0:00.000'], [9.9996, '0:10.000'],
+    [59.9994, '0:59.999'], [59.9996, '1:00.000'], [119.9996, '2:00.000'],
+    [3599.9996, '60:00.000'], [65.0001, '1:05.000']]) {
+    assert.equal(w.formatSeconds(seconds), expected);
+  }
+  for (const value of [NaN, -Infinity, -1, '90', null, Number.MAX_VALUE]) {
+    assert.equal(w.formatSeconds(value), 'N/A');
+  }
+  assert.equal(w.formatTime('59.9996'), '1:00.000');
+  assert.equal(w.formatGap(119.9996), '2:00.000');
+  assert.equal(w.formatGap(Infinity), 'N/A');
+  assert.equal(w.formatGap(NaN), 'N/A');
+});
