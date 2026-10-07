@@ -755,3 +755,38 @@ test('prototype names remain ordinary saved and live drivers with isolated secto
   const inherited = Object.create({ Ghost: drivers.constructor });
   assert.deepEqual(Object.keys(w.addLiveOnlyDrivers(inherited)).sort(), names.slice().sort());
 });
+
+test('malformed records cannot hide valid laps, win best lap selection, or earn ranks', async () => {
+  const env = createDashboard();
+  const w = env.window;
+  const records = [null, false, 10, [], rec('Ann', 'bad'), rec('Ann', '1:23.000'),
+    rec('Broken', {}), rec('Broken', -1), rec('Invalid', 'bad'), rec('Invalid', '1:25.000', { is_valid: false })];
+  w.updateEventDateOptions(records);
+  assert.equal(w.recordDate(null), '');
+  assert.equal(w.recordDate(undefined), '');
+  env.set('eventDateFilter', '2026-01-01');
+  assert.deepEqual(plain(w.filterRecordsByEventDate(records)), []);
+  env.set('eventDateFilter', '');
+  const drivers = w.buildDriversFromRecords(records);
+  assert.equal(drivers.Ann.lap_times[0].time, '1:23.000');
+  assert.equal(drivers.Invalid.lap_times[0].time, '1:25.000');
+  assert.equal(w.isBetterLap({ time: 'bad', is_valid: true }, { time: '1:23.000', is_valid: true }), false);
+  assert.equal(w.isBetterLap({ time: '1:23.000', is_valid: true }, { time: 'bad', is_valid: true }), true);
+  w.updateLeaderboard(drivers);
+  const broken = rows(env.document).find(row => row.dataset.driver === 'Broken');
+  assert.equal(broken.querySelector('.col-pos').textContent, '');
+  assert.equal(broken.querySelector('.col-pos').className.trim(), 'td-pos col-pos');
+  assert.equal(broken.querySelector('.col-gap').textContent, '—');
+  assert.equal(broken.querySelector('.col-interval').textContent, '—');
+  assert.equal(broken.querySelector('.laptime-badge').textContent, 'N/A');
+  assert.equal(broken.querySelector('.laptime-badge').classList.contains('fastest'), false);
+  assert.equal(broken.classList.contains('invalid-row'), true);
+  assert.equal(w.formatTopSpeed(NaN), '—');
+  assert.equal(w.formatTopSpeed({}), '—');
+  assert.equal(w.formatTopSpeed(-1), '—');
+  env.set('currentTrack', 'japan');
+  env.fetchHandler = () => jsonResponse({ lap_times: records });
+  await w.refreshDisplayData();
+  assert.equal(env.logs.error.length, 0);
+  assert.deepEqual(rows(env.document).map(row => row.dataset.driver), ['Ann', 'Invalid', 'Broken']);
+});
