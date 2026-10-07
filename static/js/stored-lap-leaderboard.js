@@ -719,7 +719,7 @@ function buildPbProgressionRow(driver) {
     }
   }
 
-  return `<tr class="pb-chart-row"><td colspan="9">
+  return `<tr class="pb-chart-row"><td colspan="10">
       <svg class="pb-chart" width="${width}" height="${height}" role="img" aria-label="Valid lap times in order, personal bests highlighted">
         <polyline class="pb-chart-line" points="${points.trim()}"></polyline>${dots}
       </svg>
