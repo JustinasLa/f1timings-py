@@ -221,3 +221,34 @@ test('polling invokes optional map recovery and supports an absent map module', 
   await env.flush();
   assert.equal(retries, 1);
 });
+
+test('track changes clear old timing and reject old record successes and errors', async () => {
+  const gates = [];
+  const env = createDashboard({ fetch: () => {
+    const gate = deferred(); gates.push(gate); return gate.promise;
+  } });
+  const w = env.window;
+  env.set('currentTrack', 'japan');
+  const initial = w.loadDisplayData();
+  await env.flush();
+  gates[0].resolve(jsonResponse({ lap_times: [{ driver: 'Japan only', time: '1:28.690' }] }));
+  await initial;
+  const old = w.loadDisplayData();
+  await env.flush();
+  env.set('currentTrack', 'monza');
+  w.loadDisplayData();
+  assert.doesNotMatch(env.document.getElementById('timingTableBody').textContent, /Japan only/);
+  gates[1].resolve(jsonResponse({ lap_times: [{ driver: 'Stale Japan', time: '1:20.000' }] }));
+  await old;
+  await env.flush();
+  assert.doesNotMatch(env.document.getElementById('timingTableBody').textContent, /Stale Japan/);
+  gates[2].resolve(jsonResponse({ lap_times: [{ driver: 'Monza only', time: '1:10.000' }] }));
+  await env.flush();
+  assert.match(env.document.getElementById('timingTableBody').textContent, /Monza only/);
+  const failedOld = w.refreshDisplayData();
+  await env.flush();
+  env.set('currentTrack', 'spain');
+  gates[3].resolve(jsonResponse({}, 500));
+  await failedOld;
+  assert.equal(env.logs.error.length, 0);
+});

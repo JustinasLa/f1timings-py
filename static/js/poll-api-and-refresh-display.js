@@ -3,6 +3,7 @@ let displayDataPending = false;
 let liveDriversInFlight = false;
 let lastRecordsFetchAt = 0;
 let lastLivePollOkAt = Date.now();
+let displayedRecordsTrack = null;
 
 function startDataFetching() {
   if (fetchDataInterval) clearInterval(fetchDataInterval);
@@ -25,6 +26,7 @@ function pollDisplayData() {
 }
 
 async function loadDisplayData() {
+  ensureDisplayedTrack();
   if (displayDataInFlight) {
     displayDataPending = true;
     return;
@@ -42,7 +44,18 @@ async function loadDisplayData() {
   }
 }
 
+function ensureDisplayedTrack() {
+  if (displayedRecordsTrack !== null && displayedRecordsTrack !== currentTrack) {
+    updateLeaderboard({});
+    updateFastestLapPill({});
+    updatePoleLapCard([]);
+  }
+  displayedRecordsTrack = currentTrack;
+}
+
 async function refreshDisplayData() {
+  const requestedTrack = currentTrack;
+  ensureDisplayedTrack();
   if (!currentTrack) {
     updateLeaderboard({});
     updateFastestLapPill({});
@@ -51,15 +64,18 @@ async function refreshDisplayData() {
   }
 
   try {
-    const url = "/api/track/records?track=" + encodeURIComponent(currentTrack);
+    const url = "/api/track/records?track=" + encodeURIComponent(requestedTrack);
     const response = await fetchJsonWithTimeout(url, 1500);
+    if (requestedTrack !== currentTrack) return;
     const records = Array.isArray(response.lap_times) ? response.lap_times : [];
     updateEventDateOptions(records);
     const drivers = buildDriversFromRecords(filterRecordsByEventDate(records));
     updateLeaderboard(drivers);
     updateFastestLapPill(drivers);
     updatePoleLapCard(records);
-  } catch (e) { console.error("Error loading display data:", e); }
+  } catch (e) {
+    if (requestedTrack === currentTrack) console.error("Error loading display data:", e);
+  }
 }
 
 async function loadLiveDriverPositions() {
