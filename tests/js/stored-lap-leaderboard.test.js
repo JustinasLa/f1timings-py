@@ -836,3 +836,32 @@ test('historical event dates show recorded sectors and exclude current flying dr
   assert.equal(rows(env.document).length, 2);
   assert.equal(rows(env.document)[0].querySelector('.sector-box').textContent, '0.900');
 });
+
+test('expansion buttons expose native keyboard semantics and keep focus through redraws', () => {
+  const env = createDashboard();
+  const w = env.window;
+  const name = '__proto__ " [ ] < >';
+  const drivers = w.buildDriversFromRecords([rec(name, '1:23.000')]);
+  w.updateLeaderboard(drivers);
+  let button = env.document.querySelector('.expand-toggle');
+  assert.equal(button.tagName, 'BUTTON');
+  assert.equal(button.type, 'button');
+  assert.equal(button.getAttribute('aria-label'), 'Expand laps for ' + name);
+  assert.equal(button.getAttribute('aria-expanded'), 'false');
+  button.focus();
+  button.click();
+  button = env.document.querySelector('.expand-toggle');
+  assert.equal(env.document.activeElement, button);
+  assert.equal(button.getAttribute('aria-expanded'), 'true');
+  assert.equal(button.getAttribute('aria-label'), 'Collapse laps for ' + name);
+  env.set('latestLiveDrivers', { a: { name, live_lap_active: true, live_sector_1_ms: 1234 } });
+  w.updateLeaderboard(drivers);
+  button = env.document.querySelector('.expand-toggle');
+  assert.equal(env.document.activeElement, button);
+  button.click();
+  assert.equal(env.document.querySelectorAll('.lap-detail-row').length, 0);
+  assert.equal(env.document.activeElement.getAttribute('aria-expanded'), 'false');
+  env.set('leaderboardSearchQuery', 'missing');
+  w.updateLeaderboard(drivers);
+  assert.equal(env.document.querySelector('.expand-toggle'), null);
+});

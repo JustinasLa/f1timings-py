@@ -501,6 +501,9 @@ body.layout-resizing {
 .timing-table tbody tr.clickable-row.expanded { background: rgba(255,255,255,0.05); }
 
 .expand-toggle {
+  padding: 0;
+  font-family: inherit;
+  cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -517,6 +520,7 @@ body.layout-resizing {
   vertical-align: middle;
   transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
+.expand-toggle:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .clickable-row:hover .expand-toggle {
   border-color: var(--blue);
   color: var(--blue);
