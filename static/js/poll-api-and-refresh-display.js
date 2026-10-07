@@ -69,6 +69,7 @@ async function loadLiveDriverPositions() {
     const liveDrivers = await fetchJsonWithTimeout("/api/drivers/live", 1500);
     lastLivePollOkAt = Date.now();
     latestLiveDrivers = liveDrivers;
+    if (typeof refreshMapDriverTooltip === 'function') refreshMapDriverTooltip();
     updateDriverAliasPanel(liveDrivers);
     const withPos = Object.entries(liveDrivers).filter(([, d]) =>
       hasLivePosition(d)
@@ -79,6 +80,8 @@ async function loadLiveDriverPositions() {
       redrawCompleteTrack();
     }
   } catch {
+    const tooltip = document.getElementById('mapDriverTooltip');
+    if (tooltip) tooltip.hidden = true;
     if (trackData) redrawCompleteTrack();
   } finally {
     liveDriversInFlight = false;

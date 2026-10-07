@@ -65,6 +65,7 @@ test('initialization tolerates each missing required element and reset before in
     const env = createDashboard({ scripts: ['map-interaction-controls.js'] });
     env.document.getElementById(id).remove();
     assert.doesNotThrow(() => env.window.resetMapInteractions());
+    assert.doesNotThrow(() => env.window.refreshMapDriverTooltip());
     assert.doesNotThrow(() => env.window.initializeMapInteractions());
     assert.equal(env.get('mapInteractionController'), null);
   }
@@ -305,6 +306,60 @@ test('hover tooltip clamps inside the viewport at every edge', () => {
   assert.equal(env.tooltip.hidden, false);
   assert.equal(env.tooltip.style.left, '8px');
   assert.equal(env.tooltip.style.top, '8px');
+});
+
+test('telemetry refresh updates stationary hover and hides drivers that move away or disappear', async () => {
+  const env = interactions();
+  env.run('drawDriversOnTrack = () => {}; redrawCompleteTrack = () => {};');
+  live(env, { alice: driver() });
+  pointer(env, 'pointermove');
+  env.fetchHandler = () => jsonResponse({ alice: driver({ live_lap_invalid: true, live_sector_2_ms: 29000, name: 'Updated Alice' }) });
+  await env.window.loadLiveDriverPositions();
+  assert.equal(env.tooltip.hidden, false);
+  assert.match(env.tooltip.textContent, /Updated Alice.*Invalid lap.*S2 29\.000/);
+  env.fetchHandler = () => jsonResponse({ alice: driver({ world_x: 2000 }) });
+  await env.window.loadLiveDriverPositions();
+  assert.equal(env.tooltip.hidden, true);
+  env.fetchHandler = () => jsonResponse({ alice: driver() });
+  await env.window.loadLiveDriverPositions();
+  assert.equal(env.tooltip.hidden, false);
+  env.fetchHandler = () => jsonResponse({});
+  await env.window.loadLiveDriverPositions();
+  assert.equal(env.tooltip.hidden, true);
+  live(env, { alice: driver() });
+  pointer(env, 'pointermove');
+  env.fetchHandler = () => { throw new Error('offline'); };
+  await env.window.loadLiveDriverPositions();
+  assert.equal(env.tooltip.hidden, true);
+});
+
+test('optional tooltip helper and absent tooltip are supported by polling', async () => {
+  const env = createDashboard();
+  env.window.refreshMapDriverTooltip = undefined;
+  await env.window.loadLiveDriverPositions();
+  env.document.getElementById('mapDriverTooltip').remove();
+  env.fetchHandler = () => { throw new Error('offline'); };
+  await env.window.loadLiveDriverPositions();
+  assert.equal(env.get('liveDriversInFlight'), false);
+});
+
+test('leave, drag, zoom, reset and resize clear remembered hover coordinates', () => {
+  for (const clear of [
+    env => pointer(env, 'pointerleave'),
+    env => pointer(env, 'pointerdown'),
+    env => button(env, 'mapZoomIn').click(),
+    env => env.window.resetMapInteractions(),
+    env => env.window.dispatchEvent(new env.window.Event('resize')),
+  ]) {
+    const env = interactions();
+    button(env, 'mapZoomIn').click();
+    live(env, { alice: driver() });
+    pointer(env, 'pointermove');
+    assert.equal(env.tooltip.hidden, false);
+    clear(env);
+    env.window.refreshMapDriverTooltip();
+    assert.equal(env.tooltip.hidden, true);
+  }
 });
 
 test('track reload resets initialized interactions and optional reset helper absence is supported', async () => {
