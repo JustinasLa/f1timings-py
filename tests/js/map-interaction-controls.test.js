@@ -155,6 +155,15 @@ test('wheel during a drag preserves zoom and the original pan anchor', () => {
   assert.deepEqual(transform(env.map), { x: 30, y: 0, zoom: 1.25 });
 });
 
+test('horizontal-only and zero-delta wheel events do not zoom the map', () => {
+  const env = interactions();
+  button(env, 'mapZoomIn').click();
+  assert.equal(pointer(env, 'wheel', { deltaX: 100, deltaY: 0 }).defaultPrevented, false);
+  assert.equal(transform(env.map).zoom, 1.25);
+  assert.equal(wheel(env, 0).defaultPrevented, false);
+  assert.equal(transform(env.map).zoom, 1.25);
+});
+
 test('secondary pointers and additional pointerdowns cannot replace the primary drag', () => {
   const env = interactions();
   button(env, 'mapZoomIn').click();
