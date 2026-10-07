@@ -186,3 +186,33 @@ test('pointer capture follows only the active pointer and releases on completion
   w.onDividerPointerDown({ clientX: 450, preventDefault() {} });
   w.onDividerPointerUp();
 });
+
+test('keyboard resizing updates separator accessibility values and honours bounds', () => {
+  const env = createDashboard();
+  const layout = withGeometry(env);
+  const divider = env.document.getElementById('layoutDivider');
+  env.document.querySelector('.timing-area').getBoundingClientRect = () => ({ width: parseFloat(leftWidth(layout)) || 400 });
+  const w = env.window;
+  w.initializeLayoutDivider();
+  assert.equal(divider.getAttribute('aria-valuenow'), '400');
+  for (const [key, shiftKey, expected] of [['ArrowLeft', false, 390], ['ArrowRight', true, 440], ['Home', false, 240], ['End', false, 674]]) {
+    const event = new w.KeyboardEvent('keydown', { key, shiftKey, cancelable: true });
+    divider.dispatchEvent(event);
+    assert.equal(event.defaultPrevented, true);
+    assert.equal(leftWidth(layout), expected + 'px');
+    assert.equal(divider.getAttribute('aria-valuenow'), String(expected));
+  }
+  assert.equal(divider.getAttribute('aria-valuemin'), '240');
+  assert.equal(divider.getAttribute('aria-valuemax'), '674');
+  assert.equal(divider.getAttribute('aria-valuetext'), 'Timing panel 674 pixels wide');
+  const unrelated = new w.KeyboardEvent('keydown', { key: 'Enter', cancelable: true });
+  divider.dispatchEvent(unrelated);
+  assert.equal(unrelated.defaultPrevented, false);
+  layout.remove();
+  assert.doesNotThrow(() => w.onDividerKeyDown({ key: 'Home' }));
+});
+
+test('divider initialization tolerates a missing layout', () => {
+  const env = createDashboard({ html: '<div id="layoutDivider"></div>' });
+  assert.doesNotThrow(() => env.window.initializeLayoutDivider());
+});

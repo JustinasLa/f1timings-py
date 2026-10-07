@@ -213,6 +213,7 @@ body.layout-resizing .main-layout {
   position: relative;
   touch-action: none;
 }
+.layout-divider:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
 .layout-divider::after {
   content: "";
   position: absolute;
