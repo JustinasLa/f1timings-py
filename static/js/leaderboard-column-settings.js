@@ -93,4 +93,11 @@ function initializeColumnSettings() {
       toggle.setAttribute("aria-expanded", "false");
     }
   });
+  document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape' && menu.classList.contains('open')) {
+      menu.classList.remove('open');
+      toggle.setAttribute('aria-expanded', 'false');
+      toggle.focus();
+    }
+  });
 }
