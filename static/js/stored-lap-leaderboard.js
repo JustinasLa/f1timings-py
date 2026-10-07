@@ -43,6 +43,13 @@ function isLeaderboardRecord(record) {
   return record !== null && typeof record === 'object' && !Array.isArray(record);
 }
 
+function eventDateIncludesLive() {
+  const today = new Date(Date.now());
+  const date = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') +
+    '-' + String(today.getDate()).padStart(2, '0');
+  return !eventDateFilter || eventDateFilter === date;
+}
+
 function updateEventDateOptions(records) {
   const select = document.getElementById('eventDateFilter');
   if (!select) return;
@@ -231,6 +238,7 @@ function buildOneSectorBox(valueMs, personalBestMs, overallBestMs, isValid) {
 
 function buildLeaderboardLiveLapSectors() {
   const liveLapSectors = Object.create(null);
+  if (!eventDateIncludesLive()) return liveLapSectors;
   for (const liveDriver of Object.values(latestLiveDrivers)) {
     if (!liveDriver || liveDriver.live_lap_active !== true) {
       continue;
@@ -247,6 +255,8 @@ function buildLeaderboardLiveLapSectors() {
 
 function addLiveOnlyDrivers(drivers) {
   const mergedDrivers = Object.assign(Object.create(null), drivers);
+
+  if (!eventDateIncludesLive()) return mergedDrivers;
 
   for (const liveDriver of Object.values(latestLiveDrivers)) {
     if (!liveDriver || liveDriver.live_lap_active !== true) {

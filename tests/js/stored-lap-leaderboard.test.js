@@ -817,3 +817,22 @@ test('recent lap chronology compares parsed instants including timezone offsets'
   ]);
   assert.deepEqual(plain(drivers.Ann.recent_laps.map(lap => lap.time)), ['1:22.000', '1:21.000']);
 });
+
+test('historical event dates show recorded sectors and exclude current flying drivers', () => {
+  const env = createDashboard();
+  const w = env.window;
+  env.clock.set(Date.parse('2026-10-07T12:00:00'));
+  const drivers = w.buildDriversFromRecords([rec('Ann', '1:23.000', { sector_1_ms: 1000 })]);
+  env.set('latestLiveDrivers', { a: { name: 'Ann', live_lap_active: true, live_sector_1_ms: 900 },
+    b: { name: 'LiveOnly', live_lap_active: true, live_sector_1_ms: 800 } });
+  env.set('eventDateFilter', '2026-10-06');
+  w.updateLeaderboard(drivers);
+  assert.deepEqual(rows(env.document).map(row => row.dataset.driver), ['Ann']);
+  assert.equal(env.document.getElementById('driverCount').textContent, '1');
+  assert.equal(rows(env.document)[0].querySelector('.sector-box').textContent, '1.000');
+  assert.equal(Object.keys(env.get('leaderboardLiveLapSectors')).length, 0);
+  env.set('eventDateFilter', '2026-10-07');
+  w.updateLeaderboard(drivers);
+  assert.equal(rows(env.document).length, 2);
+  assert.equal(rows(env.document)[0].querySelector('.sector-box').textContent, '0.900');
+});
