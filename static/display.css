@@ -801,9 +801,8 @@ body.layout-resizing {
 #trackCanvas.map-dragging { cursor: grabbing; }
 .map-top-overlay { z-index: 2; pointer-events: none; }
 .map-zoom-controls {
-  position: absolute;
-  top: 14px;
-  right: 14px;
+  flex-shrink: 0;
+  margin-left: auto;
   z-index: 3;
   display: flex;
   gap: 3px;
