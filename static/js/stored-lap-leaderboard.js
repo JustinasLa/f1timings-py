@@ -36,7 +36,11 @@ let eventDateFilter = '';
 let lastEventDateOptionsHtml = null;
 
 function recordDate(record) {
-  return String(record.recorded_at || '').slice(0, 10);
+  return String(record?.recorded_at || '').slice(0, 10);
+}
+
+function isLeaderboardRecord(record) {
+  return record !== null && typeof record === 'object' && !Array.isArray(record);
 }
 
 function updateEventDateOptions(records) {
@@ -44,7 +48,7 @@ function updateEventDateOptions(records) {
   if (!select) return;
   const dates = new Set();
   for (const record of records) {
-    if (record.is_pole_reference !== true && recordDate(record)) {
+    if (isLeaderboardRecord(record) && record.is_pole_reference !== true && recordDate(record)) {
       dates.add(recordDate(record));
     }
   }
@@ -67,7 +71,7 @@ function filterRecordsByEventDate(records) {
     return records;
   }
   return records.filter(record =>
-    record.is_pole_reference === true || recordDate(record) === eventDateFilter
+    isLeaderboardRecord(record) && (record.is_pole_reference === true || recordDate(record) === eventDateFilter)
   );
 }
 
@@ -84,7 +88,7 @@ function initializeEventDateFilter() {
 }
 
 function formatTopSpeed(speedKph) {
-  if (speedKph === null || speedKph === undefined) {
+  if (typeof speedKph !== 'number' || !Number.isFinite(speedKph) || speedKph < 0) {
     return '—';
   }
   return Math.round(speedKph) + ' km/h';
@@ -333,10 +337,15 @@ function recomputeBestSectors(rows) {
 }
 
 function isBetterLap(candidate, current) {
+  const candidateSeconds = parseTimeToSeconds(candidate.time);
+  const currentSeconds = parseTimeToSeconds(current.time);
+  if (Number.isFinite(candidateSeconds) !== Number.isFinite(currentSeconds)) {
+    return Number.isFinite(candidateSeconds);
+  }
   if (candidate.is_valid !== current.is_valid) {
     return current.is_valid === false;
   }
-  return parseTimeToSeconds(candidate.time) < parseTimeToSeconds(current.time);
+  return candidateSeconds < currentSeconds;
 }
 
 function getDriverDotColor(driver) {
@@ -349,17 +358,18 @@ function buildDriversFromRecords(records) {
   const drivers = Object.create(null);
 
   for (const record of records) {
-    if (record.is_pole_reference === true) {
+    if (!isLeaderboardRecord(record) || record.is_pole_reference === true) {
       continue;
     }
 
-    const driverName = record.driver || 'Unknown';
+    const driverName = typeof record.driver === 'string' && record.driver ? record.driver : 'Unknown';
     const recordSeconds = parseTimeToSeconds(record.time);
+    const isValid = record.is_valid !== false && Number.isFinite(recordSeconds);
 
     const lap = {
       time: record.time,
       is_fastest: false,
-      is_valid: record.is_valid !== false,
+      is_valid: isValid,
       fastest_speed_kph: record.fastest_speed_kph,
       sector_1_ms: record.sector_1_ms,
       sector_2_ms: record.sector_2_ms,
@@ -370,7 +380,7 @@ function buildDriversFromRecords(records) {
 
     const lapDetail = {
       time: record.time,
-      is_valid: record.is_valid !== false,
+      is_valid: isValid,
       fastest_speed_kph: record.fastest_speed_kph,
       recorded_at: record.recorded_at || '',
       sector_1_ms: record.sector_1_ms,
@@ -399,7 +409,7 @@ function buildDriversFromRecords(records) {
       }
     }
 
-    if (record.is_valid !== false) {
+    if (isValid) {
       const best = drivers[driverName].best_sectors;
       best.s1 = minSector(best.s1, record.sector_1_ms);
       best.s2 = minSector(best.s2, record.sector_2_ms);
@@ -497,7 +507,7 @@ function updateLeaderboard(drivers) {
   leaderboardLiveLapSectors = buildLeaderboardLiveLapSectors();
 
   const fastestValidTime = parseTimeToSeconds(
-    allRows.find(r => r.lap.is_valid)?.lap.time
+    allRows.find(r => r.lap.is_valid && Number.isFinite(parseTimeToSeconds(r.lap.time)))?.lap.time
   );
 
   let previousValidTime = Infinity;
@@ -512,10 +522,10 @@ function updateLeaderboard(drivers) {
     const badgeClass = !lap.is_valid ? 'invalid' : lap.is_fastest ? 'fastest' : 'normal';
     const lapSec = parseTimeToSeconds(lap.time);
 
-    let posText = !lap.is_valid ? '' : String(pos);
-    let posCellClass = posClass;
+    let posText = !lap.is_valid || !Number.isFinite(lapSec) ? '' : String(pos);
+    let posCellClass = posText ? posClass : '';
     let lapTimeHtml = '<span class="laptime-badge ' + badgeClass + '">' + formatTime(lap.time) + '</span>';
-    let gap = (!lap.is_valid || i === 0 || !isFinite(fastestValidTime))
+    let gap = (!lap.is_valid || i === 0 || !isFinite(fastestValidTime) || !Number.isFinite(lapSec))
       ? '—'
       : '+' + formatGap(lapSec - fastestValidTime);
     let interval = '—';
@@ -732,7 +742,7 @@ function buildLapDetailRow(driver, fastestValidTime) {
 
 function findPoleReferenceRecord(records) {
   for (const record of records) {
-    if (record.is_pole_reference === true) {
+    if (isLeaderboardRecord(record) && record.is_pole_reference === true) {
       return record;
     }
   }
