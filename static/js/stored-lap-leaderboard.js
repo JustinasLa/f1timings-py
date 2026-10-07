@@ -498,6 +498,21 @@ function bindLeaderboardClicks(tbody) {
   });
 }
 
+function replaceLeaderboardRows(tbody, rowsHtml) {
+  if (rowsHtml === lastLeaderboardRowsHtml) return;
+  const active = document.activeElement;
+  const focusedDriver = active?.matches('.expand-toggle') && tbody.contains(active)
+    ? active.closest('tr[data-driver]').dataset.driver : null;
+  tbody.innerHTML = rowsHtml;
+  lastLeaderboardRowsHtml = rowsHtml;
+  if (focusedDriver !== null) {
+    const button = Array.from(tbody.querySelectorAll('.expand-toggle')).find(element =>
+      element.closest('tr[data-driver]').dataset.driver === focusedDriver
+    );
+    button?.focus({ preventScroll: true });
+  }
+}
+
 function updateLeaderboard(drivers) {
   const tbody = document.getElementById("timingTableBody");
   bindLeaderboardClicks(tbody);
@@ -518,10 +533,7 @@ function updateLeaderboard(drivers) {
 
   if (allRows.length === 0) {
     const emptyRowsHtml = `<tr class="no-data-row"><td colspan="10">No timing data recorded for this track</td></tr>`;
-    if (emptyRowsHtml !== lastLeaderboardRowsHtml) {
-      tbody.innerHTML = emptyRowsHtml;
-      lastLeaderboardRowsHtml = emptyRowsHtml;
-    }
+    replaceLeaderboardRows(tbody, emptyRowsHtml);
     return;
   }
 
@@ -583,7 +595,7 @@ function updateLeaderboard(drivers) {
       <td class="td-pos col-pos ${posCellClass}">${posText}</td>
       <td>
         <div class="driver-name">
-          <span class="expand-toggle">${isExpanded ? '−' : '+'}</span>
+          <button type="button" class="expand-toggle" aria-label="${escapeAttr((isExpanded ? 'Collapse' : 'Expand') + ' laps for ' + driver.name)}" aria-expanded="${isExpanded}">${isExpanded ? '−' : '+'}</button>
           <span class="team-dot" style="background:${dotColor}"></span>${escapeHtml(driver.name)}
         </div>
       </td>
@@ -604,10 +616,7 @@ function updateLeaderboard(drivers) {
   if (!rowsHtml) {
     rowsHtml = '<tr class="no-data-row"><td colspan="10">No drivers match these filters</td></tr>';
   }
-  if (rowsHtml !== lastLeaderboardRowsHtml) {
-    tbody.innerHTML = rowsHtml;
-    lastLeaderboardRowsHtml = rowsHtml;
-  }
+  replaceLeaderboardRows(tbody, rowsHtml);
 }
 
 async function deleteSavedLap(driverName, time, recordedAt) {
