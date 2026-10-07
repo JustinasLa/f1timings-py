@@ -1236,11 +1236,20 @@ body.kiosk .timing-table,
 body.kiosk .track-header,
 body.kiosk .map-top-overlay,
 body.kiosk #toast-container {
-  zoom: 1.5;
+  zoom: 1.15;
 }
 body.kiosk-idle,
 body.kiosk-idle * {
   cursor: none !important;
+}
+
+@media (min-width: 1600px) and (min-height: 900px) {
+  body.kiosk .session-header,
+  body.kiosk .section-title,
+  body.kiosk .timing-table,
+  body.kiosk .track-header,
+  body.kiosk .map-top-overlay,
+  body.kiosk #toast-container { zoom: 1.35; }
 }
 
 @media (max-width: 700px) {
