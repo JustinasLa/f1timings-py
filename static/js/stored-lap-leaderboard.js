@@ -114,10 +114,11 @@ function formatAssistsTag(assists) {
 
 function potentialMs(driver) {
   const best = driver.best_sectors;
-  if (!best || !(best.s1 > 0 && best.s2 > 0 && best.s3 > 0)) {
+  if (!best || ![best.s1, best.s2, best.s3].every(value => sectorMs(value) > 0)) {
     return 0;
   }
-  return best.s1 + best.s2 + best.s3;
+  const total = sectorMs(best.s1) + sectorMs(best.s2) + sectorMs(best.s3);
+  return Number.isFinite(total) ? total : 0;
 }
 
 function formatPotentialTime(driver) {
@@ -148,13 +149,22 @@ function formatConsistency(driver) {
 }
 
 function formatLeaderboardSectorMs(milliseconds) {
-  if (milliseconds === null || milliseconds === undefined || milliseconds <= 0) {
+  milliseconds = sectorMs(milliseconds);
+  if (!milliseconds) {
     return '—';
   }
   return (milliseconds / 1000).toFixed(3);
 }
 
+function sectorMs(value) {
+  if (typeof value !== 'number' && typeof value !== 'string') return 0;
+  const milliseconds = Number(value);
+  return Number.isFinite(milliseconds) && milliseconds > 0 ? milliseconds : 0;
+}
+
 function minSector(a, b) {
+  a = sectorMs(a);
+  b = sectorMs(b);
   const aSet = a && a > 0;
   const bSet = b && b > 0;
   if (!aSet && !bSet) {
@@ -178,23 +188,26 @@ function getDisplaySectors(driver, lap) {
     best = { s1: 0, s2: 0, s3: 0 };
   }
 
-  let s1 = lap.sector_1_ms;
+  let s1 = sectorMs(lap.sector_1_ms);
   if (!s1 || s1 <= 0) {
-    s1 = best.s1;
+    s1 = sectorMs(best.s1);
   }
-  let s2 = lap.sector_2_ms;
+  let s2 = sectorMs(lap.sector_2_ms);
   if (!s2 || s2 <= 0) {
-    s2 = best.s2;
+    s2 = sectorMs(best.s2);
   }
-  let s3 = lap.sector_3_ms;
+  let s3 = sectorMs(lap.sector_3_ms);
   if (!s3 || s3 <= 0) {
-    s3 = best.s3;
+    s3 = sectorMs(best.s3);
   }
 
   return { s1: s1, s2: s2, s3: s3, isValid: lap.is_valid !== false };
 }
 
 function sectorColorClass(valueMs, personalBestMs, overallBestMs, isValid) {
+  valueMs = sectorMs(valueMs);
+  personalBestMs = sectorMs(personalBestMs);
+  overallBestMs = sectorMs(overallBestMs);
   if (!isValid) {
     return 'sector-invalid';
   }
@@ -223,9 +236,9 @@ function buildLeaderboardLiveLapSectors() {
       continue;
     }
     liveLapSectors[liveDriver.name] = {
-      s1: liveDriver.live_sector_1_ms || 0,
-      s2: liveDriver.live_sector_2_ms || 0,
-      s3: liveDriver.live_sector_3_ms || 0,
+      s1: sectorMs(liveDriver.live_sector_1_ms),
+      s2: sectorMs(liveDriver.live_sector_2_ms),
+      s3: sectorMs(liveDriver.live_sector_3_ms),
       isValid: liveDriver.live_lap_invalid !== true
     };
   }
@@ -272,13 +285,15 @@ function liveDeltaMs(live, bestLap) {
   if (bestLap.is_valid === false) {
     return null;
   }
-  const bestS1 = bestLap.sector_1_ms || 0;
-  const bestS2 = bestLap.sector_2_ms || 0;
-  if (live.s1 > 0 && live.s2 > 0 && bestS1 > 0 && bestS2 > 0) {
-    return live.s1 + live.s2 - bestS1 - bestS2;
+  const bestS1 = sectorMs(bestLap.sector_1_ms);
+  const bestS2 = sectorMs(bestLap.sector_2_ms);
+  const liveS1 = sectorMs(live.s1);
+  const liveS2 = sectorMs(live.s2);
+  if (liveS1 > 0 && liveS2 > 0 && bestS1 > 0 && bestS2 > 0) {
+    return liveS1 + liveS2 - bestS1 - bestS2;
   }
-  if (live.s1 > 0 && bestS1 > 0) {
-    return live.s1 - bestS1;
+  if (liveS1 > 0 && bestS1 > 0) {
+    return liveS1 - bestS1;
   }
   return null;
 }
@@ -327,7 +342,7 @@ function recomputeBestSectors(rows) {
     if (!recordBest) {
       recordBest = { s1: 0, s2: 0, s3: 0 };
     }
-    const personalBest = { s1: recordBest.s1, s2: recordBest.s2, s3: recordBest.s3 };
+    const personalBest = { s1: sectorMs(recordBest.s1), s2: sectorMs(recordBest.s2), s3: sectorMs(recordBest.s3) };
 
     leaderboardPersonalBestSectors[driver.name] = personalBest;
     leaderboardOverallBestSectors.s1 = minSector(leaderboardOverallBestSectors.s1, personalBest.s1);

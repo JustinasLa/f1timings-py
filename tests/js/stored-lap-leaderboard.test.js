@@ -790,3 +790,21 @@ test('malformed records cannot hide valid laps, win best lap selection, or earn 
   assert.equal(env.logs.error.length, 0);
   assert.deepEqual(rows(env.document).map(row => row.dataset.driver), ['Ann', 'Invalid', 'Broken']);
 });
+
+test('sector calculations normalize numeric strings and reject malformed or nonfinite values', () => {
+  const { window: w } = createDashboard();
+  assert.equal(w.potentialMs({ best_sectors: { s1: '1000', s2: '2000', s3: '3000' } }), 6000);
+  assert.equal(w.potentialMs({ best_sectors: { s1: 1e308, s2: 1e308, s3: 1e308 } }), 0);
+  assert.equal(w.formatPotentialTime({ best_sectors: { s1: '1000', s2: '2000', s3: '3000' } }), '0:06.000');
+  for (const value of [true, {}, [], Infinity, NaN, 'bad', '', -1]) {
+    assert.equal(w.sectorMs(value), 0);
+    assert.equal(w.formatLeaderboardSectorMs(value), '—');
+    assert.equal(w.sectorColorClass(value, 1000, 1000, true), 'sector-none');
+    assert.equal(w.potentialMs({ best_sectors: { s1: value, s2: 2000, s3: 3000 } }), 0);
+  }
+  assert.equal(w.minSector('1000', '900'), 900);
+  assert.equal(w.liveDeltaMs({ s1: '1000', s2: '2000' }, { sector_1_ms: '1100', sector_2_ms: '2200' }), -300);
+  assert.equal(w.formatTopSpeed(NaN), '—');
+  assert.equal(w.formatTopSpeed({}), '—');
+  assert.equal(w.formatTopSpeed(-1), '—');
+});
