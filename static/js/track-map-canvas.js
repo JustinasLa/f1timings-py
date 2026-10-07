@@ -138,6 +138,7 @@ async function loadTrackVisualization(trackName) {
     if (!newData.points || newData.points.length === 0) { showTrackPlaceholder('No track points available'); return; }
 
     trackData = newData;
+    if (typeof resetMapInteractions === 'function') resetMapInteractions();
     canvas.style.display = 'block';
     document.getElementById('trackPlaceholder').style.display = 'none';
     drawTrackOnCanvas(trackData, params);

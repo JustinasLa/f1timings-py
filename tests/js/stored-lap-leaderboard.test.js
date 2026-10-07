@@ -15,6 +15,105 @@ function cells(tr) {
   return Array.from(tr.querySelectorAll('td')).map((td) => td.textContent.trim());
 }
 
+function filterControls(env) {
+  const controls = {};
+  for (const [id, type] of [['leaderboardSearch', 'search'], ['leaderboardValidOnly', 'checkbox']]) {
+    const input = env.document.getElementById(id) || env.document.createElement('input');
+    input.id = id;
+    input.type = type;
+    if (!input.isConnected) env.document.body.append(input);
+    controls[id] = input;
+  }
+  return controls;
+}
+
+test('leaderboard search preserves original positions, leader gaps, preceding intervals and map data', () => {
+  const env = createDashboard();
+  const w = env.window;
+  const { leaderboardSearch: search } = filterControls(env);
+  w.initializeLeaderboardFilters();
+  const drivers = w.buildDriversFromRecords([
+    rec('Ann', '1:30.000', { team: 'Ferrari' }),
+    rec('Bob', '1:30.500'), rec('Cat', '1:32.000'), rec('Dan', '1:33.000', { team: 'Ferrari' })
+  ]);
+  w.updateLeaderboard(drivers);
+  search.value = '  CAT  ';
+  search.dispatchEvent(new w.Event('input'));
+  const filtered = rows(env.document);
+  assert.deepEqual(filtered.map(row => row.dataset.driver), ['Cat']);
+  assert.equal(filtered[0].querySelector('.col-pos').textContent, '3');
+  assert.equal(filtered[0].querySelector('.col-gap').textContent, '+2.000s');
+  assert.equal(filtered[0].querySelector('.col-interval').textContent, '+1.500s');
+  assert.equal(env.get('latestLeaderboardDrivers'), drivers);
+  assert.equal(env.document.getElementById('driverCount').textContent, '4');
+  search.value = 'fErRaRi';
+  search.dispatchEvent(new w.Event('input'));
+  assert.deepEqual(rows(env.document).map(row => row.dataset.driver), ['Ann', 'Dan']);
+  assert.equal(rows(env.document)[1].querySelector('.col-pos').textContent, '4');
+  assert.equal(rows(env.document)[1].querySelector('.col-interval').textContent, '+1.000s');
+  search.value = '<img src=x>';
+  search.dispatchEvent(new w.Event('input'));
+  assert.match(env.document.getElementById('timingTableBody').textContent, /No drivers match these filters/);
+  assert.equal(env.document.querySelector('#timingTableBody img'), null);
+  search.value = '';
+  search.dispatchEvent(new w.Event('input'));
+  assert.equal(rows(env.document).length, 4);
+  assert.equal(w.localStorage.length, 0);
+  assert.equal(env.fetchCalls.length, 0);
+});
+
+test('valid-only filters main rows and expanded recent laps while preserving expansion and combined search', () => {
+  const env = createDashboard();
+  const w = env.window;
+  const { leaderboardSearch: search, leaderboardValidOnly: checkbox } = filterControls(env);
+  w.initializeLeaderboardFilters();
+  const drivers = w.buildDriversFromRecords([
+    rec('Ann', '1:30.000'), rec('Ann', '1:29.000', { is_valid: false }),
+    rec('Bob', '1:31.000'), rec('Invalid', '1:10.000', { is_valid: false })
+  ]);
+  w.updateLeaderboard(drivers);
+  w.toggleDriverExpand('Ann');
+  assert.equal(env.document.querySelectorAll('tr.lap-detail-row').length, 2);
+  checkbox.checked = true;
+  checkbox.dispatchEvent(new w.Event('change'));
+  assert.deepEqual(rows(env.document).map(row => row.dataset.driver), ['Ann', 'Bob']);
+  assert.equal(env.document.querySelectorAll('tr.lap-detail-row').length, 1);
+  assert.equal(env.document.querySelector('tr.lap-detail-row .laptime-badge').textContent, '1:30.000');
+  assert.ok(env.get('expandedDrivers').has('Ann'));
+  assert.equal(drivers.Ann.recent_laps.length, 2);
+  search.value = 'invalid';
+  search.dispatchEvent(new w.Event('input'));
+  assert.equal(rows(env.document).length, 0);
+  checkbox.checked = false;
+  checkbox.dispatchEvent(new w.Event('change'));
+  assert.deepEqual(rows(env.document).map(row => row.dataset.driver), ['Invalid']);
+  search.value = '';
+  search.dispatchEvent(new w.Event('input'));
+  assert.equal(env.document.querySelectorAll('tr.lap-detail-row').length, 2);
+  checkbox.checked = true;
+  checkbox.dispatchEvent(new w.Event('change'));
+  assert.match(w.buildLapDetailRow({ name: 'A', recent_laps: [{ time: '1:10.000', is_valid: false }] }, 90), /No recent laps/);
+});
+
+test('leaderboard filter initialization tolerates missing controls and uses current input values', () => {
+  const empty = createDashboard({ html: '<div></div>' });
+  assert.doesNotThrow(() => empty.window.initializeLeaderboardFilters());
+  const env = createDashboard();
+  const { leaderboardSearch: search, leaderboardValidOnly: checkbox } = filterControls(env);
+  search.value = ' Bob ';
+  checkbox.checked = true;
+  env.window.initializeLeaderboardFilters();
+  const drivers = env.window.buildDriversFromRecords([
+    rec('Ann', '1:30.000'), rec('Bob', '1:31.000'), rec('Bob invalid', '1:10.000', { is_valid: false })
+  ]);
+  env.window.updateLeaderboard(drivers);
+  assert.deepEqual(rows(env.document).map(row => row.dataset.driver), ['Bob']);
+  checkbox.remove();
+  assert.doesNotThrow(() => env.window.initializeLeaderboardFilters());
+  search.remove();
+  assert.doesNotThrow(() => env.window.initializeLeaderboardFilters());
+});
+
 test('formatTopSpeed, formatPotentialTime and formatLeaderboardSectorMs', () => {
   const { window: w } = createDashboard();
   assert.equal(w.formatTopSpeed(null), '—');

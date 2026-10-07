@@ -785,11 +785,73 @@ body.layout-resizing {
   padding: 12px;
   position: relative;
   min-height: 0;
+  overflow: hidden;
 }
 #trackCanvas {
   max-width: 100%;
   max-height: 100%;
+  transform-origin: center;
+  touch-action: none;
+  cursor: grab;
 }
+#trackCanvas.map-dragging { cursor: grabbing; }
+.map-top-overlay { z-index: 2; pointer-events: none; }
+.map-zoom-controls {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 3;
+  display: flex;
+  gap: 3px;
+}
+.map-zoom-controls button {
+  min-width: 27px;
+  height: 26px;
+  padding: 3px 7px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-muted);
+  font: 600 11px 'Roboto Mono', monospace;
+  cursor: pointer;
+}
+.map-zoom-controls button:hover { color: var(--text); border-color: var(--blue); }
+.map-zoom-controls button:disabled { opacity: .4; cursor: default; }
+.map-zoom-controls button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.map-driver-tooltip {
+  position: absolute;
+  z-index: 4;
+  max-width: min(260px, calc(100% - 16px));
+  padding: 10px 12px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .4);
+  font-size: 11px;
+  color: var(--text-muted);
+  pointer-events: none;
+  overflow-wrap: anywhere;
+}
+.map-driver-tooltip strong { color: var(--text); }
+.map-driver-tooltip strong,
+.map-driver-tooltip span { display: block; margin: 2px 0; }
+.timing-filter-bar { display: flex; align-items: center; gap: 12px; padding: 6px 16px; }
+.timing-filter-bar > input {
+  min-width: 0;
+  flex: 1;
+  max-width: 240px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 5px 8px;
+  color: var(--text);
+  font: inherit;
+  font-size: 11px;
+}
+.timing-filter-bar label { color: var(--text-muted); font-size: 11px; white-space: nowrap; }
+.timing-filter-bar input[type=checkbox] { accent-color: var(--blue); vertical-align: middle; }
+body.kiosk .map-zoom-controls,
+body.kiosk .timing-filter-bar { display: none; }
 .trace-chart {
   width: 100%;
   flex-shrink: 0;

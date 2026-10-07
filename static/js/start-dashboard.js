@@ -8,6 +8,8 @@ document.addEventListener("DOMContentLoaded", () => {
     },
     () => initializeColumnSettings(),
     () => initializeEventDateFilter(),
+    () => initializeLeaderboardFilters(),
+    () => initializeMapInteractions(),
     () => initializeLayoutDivider(),
     () => initializeKioskMode(),
     () => initializeWebSocket(),

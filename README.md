@@ -9,6 +9,8 @@ pip install -r requirements.txt
 python app.py   # http://localhost:8000
 ```
 
+On the existing timing screen, search by driver or team and use **Valid only** to filter the leaderboard. Rankings and gaps keep their session positions. On the map, use the `−` / `+` controls or scroll to zoom, drag to pan, and click the percentage or double-click to reset. Hover a live driver dot for their name, team, lap status and completed sectors. Changing tracks resets the map view.
+
 ## Configuration
 
 | Variable | Default | Purpose |
