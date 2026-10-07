@@ -4,6 +4,9 @@ const TRACK_CANVAS_WIDTH = 1200;
 const TRACK_CANVAS_HEIGHT = 800;
 let trackMapRequestId = 0;
 let trackMapInFlight = null;
+let trackMapRetry = { track: '', failures: 0, nextAt: 0 };
+const DATA_RETRY_MIN_MS = 2000;
+const DATA_RETRY_MAX_MS = 30000;
 
 async function loadCurrentTrack() {
   try {
@@ -18,6 +21,7 @@ async function loadCurrentTrack() {
           updateTrackSelectValue();
           loadTrackVisualization(currentTrack);
         }
+        retryTrackVisualization();
         loadDisplayData();
       }
     }
@@ -135,34 +139,52 @@ async function loadTrackVisualization(trackName) {
   const requestId = ++trackMapRequestId;
   const selectedTrack = currentTrack;
   trackMapInFlight = { track, requestId };
+  if (trackMapRetry.track !== track) trackMapRetry = { track, failures: 0, nextAt: 0 };
   trackData = null;
   trackRendered = false;
   const isCurrent = () => requestId === trackMapRequestId && currentTrack === selectedTrack;
   try {
     const params = TRACK_DICTIONARY[track];
-    if (!params) { showTrackPlaceholder(`No map data for ${trackName}`); return; }
+    if (!params) {
+      trackMapRetry.nextAt = Infinity;
+      showTrackPlaceholder(`No map data for ${trackName}`);
+      return;
+    }
 
-    const r = await fetch(`/api/track/data?track=${encodeURIComponent(track)}`);
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    const newData = await r.json();
+    const newData = await fetchJsonWithTimeout(`/api/track/data?track=${encodeURIComponent(track)}`, 1500);
     if (!isCurrent()) return;
-    if (!newData.points || newData.points.length === 0) {
+    if (!Array.isArray(newData.points) || newData.points.length < 2) {
+      deferTrackMapRetry();
       showTrackPlaceholder('No track points available');
       return;
     }
 
     trackData = newData;
+    trackMapRetry = { track, failures: 0, nextAt: 0 };
     if (typeof resetMapInteractions === 'function') resetMapInteractions();
     canvas.style.display = 'block';
     document.getElementById('trackPlaceholder').style.display = 'none';
     drawTrackOnCanvas(trackData, params);
   } catch (e) {
     if (!isCurrent()) return;
+    deferTrackMapRetry();
     console.error('Error loading track:', e);
     showTrackPlaceholder('Track data unavailable');
   } finally {
     if (trackMapInFlight?.requestId === requestId) trackMapInFlight = null;
   }
+}
+
+function deferTrackMapRetry() {
+  trackMapRetry.failures++;
+  trackMapRetry.nextAt = Date.now() + Math.min(DATA_RETRY_MAX_MS,
+    DATA_RETRY_MIN_MS * 2 ** Math.min(trackMapRetry.failures - 1, 4));
+}
+
+function retryTrackVisualization() {
+  if (!canvas || !ctx || !currentTrack || (trackData && trackRendered) || trackMapInFlight) return;
+  if (trackMapRetry.track === currentTrack && Date.now() < trackMapRetry.nextAt) return;
+  return loadTrackVisualization(currentTrack);
 }
 
 function showTrackPlaceholder(msg) {

@@ -19,6 +19,7 @@ function updateConnectionBanner() {
 function pollDisplayData() {
   updateConnectionBanner();
   loadLiveDriverPositions();
+  if (typeof retryTrackVisualization === 'function') retryTrackVisualization();
   updateTrackConditions();
   if (Date.now() - lastRecordsFetchAt >= RECORDS_REFRESH_INTERVAL_MS) loadDisplayData();
 }

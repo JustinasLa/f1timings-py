@@ -207,3 +207,17 @@ test('loadLiveDriverPositions without track data draws nothing', async () => {
   assert.equal(env.ctx2d.calls.length, 0);
   assert.equal(env.get('latestLiveDrivers')[0].name, 'Ann');
 });
+
+
+test('polling invokes optional map recovery and supports an absent map module', async () => {
+  const env = createDashboard();
+  let retries = 0;
+  env.set('retryTrackVisualization', () => { retries++; });
+  env.window.pollDisplayData();
+  await env.flush();
+  assert.equal(retries, 1);
+  env.set('retryTrackVisualization', undefined);
+  env.window.pollDisplayData();
+  await env.flush();
+  assert.equal(retries, 1);
+});

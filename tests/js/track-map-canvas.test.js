@@ -538,3 +538,80 @@ test('a selection change invalidates a map response even before another load sta
   assert.equal(env.get('trackData'), null);
   assert.equal(env.get('trackMapInFlight'), null);
 });
+
+test('failed maps recover on the same track with bounded backoff and no polling storm', async () => {
+  let valid = false;
+  const env = withCanvas(createDashboard({ fetch: () => valid ? jsonResponse({ points: SQUARE }) : jsonResponse({}, 503) }));
+  await env.window.retryTrackVisualization();
+  assert.equal(env.fetchCalls.length, 0, 'no track selected');
+  env.set('currentTrack', 'japan');
+  for (const delay of [2000, 4000, 8000, 16000, 30000, 30000]) {
+    const start = env.clock.now;
+    await env.window.retryTrackVisualization();
+    assert.equal(env.get('trackMapRetry').nextAt, start + delay);
+    const count = env.fetchCalls.length;
+    env.clock.advance(delay - 1);
+    for (let i = 0; i < 10; i++) await env.window.retryTrackVisualization();
+    assert.equal(env.fetchCalls.length, count);
+    env.clock.advance(1);
+  }
+  valid = true;
+  await env.window.retryTrackVisualization();
+  assert.equal(env.get('trackRendered'), true);
+  assert.equal(env.get('trackMapRetry').failures, 0);
+  const count = env.fetchCalls.length;
+  await env.window.retryTrackVisualization();
+  assert.equal(env.fetchCalls.length, count, 'successful map is retained');
+});
+
+test('map retry waits until the canvas and context are initialized', async () => {
+  const env = createDashboard();
+  env.set('currentTrack', 'monza');
+  await env.window.retryTrackVisualization();
+  env.set('canvas', env.document.getElementById('trackCanvas'));
+  await env.window.retryTrackVisualization();
+  assert.equal(env.fetchCalls.length, 0);
+});
+
+test('same-track backend refresh recovers a missing map and malformed geometry retries later', async () => {
+  let valid = false;
+  const env = withCanvas(createDashboard({ fetch: trackApi(null, {
+    '/api/track': () => jsonResponse({ name: 'japan' }),
+    '/api/track/data?track=japan': () => jsonResponse({ points: valid ? SQUARE : [SQUARE[0]] })
+  }) }));
+  env.set('currentTrack', 'japan');
+  await env.window.loadCurrentTrack();
+  await env.flush();
+  assert.equal(env.get('trackRendered'), false);
+  assert.equal(env.document.getElementById('trackPlaceholder').textContent.includes('No track points'), true);
+  env.clock.advance(2000);
+  valid = true;
+  await env.window.loadCurrentTrack();
+  await env.flush();
+  assert.equal(env.get('trackRendered'), true);
+
+  env.set('currentTrack', 'nowhere');
+  await env.window.retryTrackVisualization();
+  const count = env.fetchCalls.length;
+  env.clock.advance(60000);
+  await env.window.retryTrackVisualization();
+  assert.equal(env.fetchCalls.length, count, 'unknown static maps cannot recover through backend retries');
+});
+
+test('an aborted map request releases its in-flight state so polling can retry', async () => {
+  let abort;
+  const env = withCanvas(createDashboard({ fetch: (url, init) => new Promise((resolve, reject) => {
+    abort = () => reject(new Error('aborted'));
+    init.signal.addEventListener('abort', abort);
+  }) }));
+  env.set('currentTrack', 'japan');
+  const request = env.window.retryTrackVisualization();
+  await env.flush();
+  await env.window.retryTrackVisualization();
+  assert.equal(env.fetchCalls.length, 1);
+  env.clock.advance(1500);
+  await request;
+  assert.equal(env.get('trackMapInFlight'), null);
+  assert.equal(env.get('trackMapRetry').nextAt, env.clock.now + 2000);
+  assert.equal(env.document.getElementById('trackCanvas').style.display, 'none');
+});
