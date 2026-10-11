@@ -11,6 +11,7 @@ ENV/
 env/
 
 .DS_Store
+Thumbs.db
 .idea/
 *.iml
 .vscode/
